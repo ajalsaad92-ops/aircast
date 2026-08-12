@@ -164,6 +164,27 @@ button {
   min-width: 0;
 }
 
+/* Icons never flex: they carry an intrinsic size and must keep it. */
+.btn svg,
+.power svg,
+.mark__badge svg,
+.livetag svg,
+.row__badge svg {
+  flex: 0 0 auto;
+}
+
+.mark__badge svg {
+  width: 18px;
+  height: 18px;
+  color: var(--amber);
+}
+
+.btn svg,
+.power svg {
+  width: 17px;
+  height: 17px;
+}
+
 .mark__badge {
   width: 34px;
   height: 34px;
@@ -210,7 +231,7 @@ button {
 .scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 4px var(--pad) calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 28px);
+  padding: 4px var(--pad) calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 48px);
 }
 
 /* --------------------------------------------------------------- panels -- */
@@ -294,13 +315,20 @@ button {
 .dial__gauge svg {
   width: 100%;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .dial__arc {
   fill: none;
   stroke-linecap: round;
-  transform-origin: 50% 50%;
+}
+
+/* The rotating group needs its own origin. An SVG <g> defaults to the user-space
+   origin (0 0), so without this the arc swings around the top-left corner of the
+   whole document instead of around the dial. */
+.dial__ring {
+  transform-origin: 50px 50px;
+  transform-box: view-box;
 }
 
 .dial__arc--track {
@@ -427,10 +455,12 @@ button {
 
 .meta__v {
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   color: var(--ink);
   letter-spacing: 0.01em;
-  word-break: break-all;
+  /* break-word rather than break-all: a port number should wrap to the next line
+     whole rather than split into "70" and "00". */
+  overflow-wrap: break-word;
 }
 
 .meta__v--amber {
@@ -1058,12 +1088,14 @@ button {
     position: static;
   }
 
+  /* `row-reverse` puts the rail on the far edge of the screen in both writing
+     directions, so its *inner* border and lamp are always the inline-end side. */
   .nav {
     position: static;
     flex-direction: column;
     width: 132px;
     border-top: 0;
-    border-inline-start: 1px solid var(--seam);
+    border-inline-end: 1px solid var(--seam);
     padding-top: 24px;
     background: rgba(10, 11, 15, 0.6);
   }
@@ -1077,10 +1109,11 @@ button {
   .nav__item[data-active='true']::before {
     top: 50%;
     transform: translateY(-50%);
-    inset-inline-start: -1px;
+    inset-inline-start: auto;
+    inset-inline-end: -1px;
     width: 2px;
     height: 26px;
-    border-radius: 0 2px 2px 0;
+    border-radius: 2px 0 0 2px;
   }
 
   .nav__badge {

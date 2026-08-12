@@ -7,6 +7,10 @@
 type Props = { className?: string };
 
 const base = {
+  // Intrinsic size matters: without it an SVG with only a viewBox stretches to fill
+  // whatever flex container it lands in, which turns a button icon into a poster.
+  width: 20,
+  height: 20,
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',

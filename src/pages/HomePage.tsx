@@ -110,6 +110,8 @@ export function HomePage() {
           </div>
         </div>
 
+        {/* Four cells so the auto-fit grid always fills its rows — an odd count
+            leaves a bare seam-coloured gap on two-column widths. */}
         <Meta
           items={[
             { k: t('net.address'), v: status?.ip ?? '—', accent: true },
@@ -117,6 +119,10 @@ export function HomePage() {
             {
               k: 'PORTS',
               v: `${status?.httpPort ?? '—'} · ${status?.airplayPort ?? '—'}`,
+            },
+            {
+              k: 'CLIENTS',
+              v: localiseDigits(status?.sessions.length ?? 0, lang),
             },
           ]}
         />

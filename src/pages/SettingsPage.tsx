@@ -147,16 +147,24 @@ export function SettingsPage() {
       </Panel>
 
       <Panel title={t('settings.about')} index={4}>
+        {/* One port per cell: three of them on a single line wrap mid-number in the
+            narrow column the auto-fit grid produces on a phone. */}
         <div className="meta" style={{ marginTop: 0 }}>
           <div className="meta__cell">
             <div className="meta__k">{t('settings.version')}</div>
             <div className="meta__v">1.0.0</div>
           </div>
           <div className="meta__cell">
-            <div className="meta__k">{t('settings.ports')}</div>
-            <div className="meta__v">
-              {settings.httpPort} · {settings.httpsPort} · {settings.airplayPort}
-            </div>
+            <div className="meta__k">HTTP</div>
+            <div className="meta__v">{settings.httpPort}</div>
+          </div>
+          <div className="meta__cell">
+            <div className="meta__k">TLS</div>
+            <div className="meta__v">{settings.httpsPort}</div>
+          </div>
+          <div className="meta__cell">
+            <div className="meta__k">AIRPLAY</div>
+            <div className="meta__v">{settings.airplayPort}</div>
           </div>
         </div>
 
