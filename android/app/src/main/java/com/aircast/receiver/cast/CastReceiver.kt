@@ -137,8 +137,9 @@ class CastReceiver(private val context: Context) {
                 // that is the wall, and no amount of further work moves it.
                 Logger.w(
                     "cast",
-                    "device auth challenge from $peer (${message.payloadBinary?.size ?: 0} bytes) " +
-                        "- no Google device certificate to answer with",
+                    "device auth challenge from $peer (${message.payloadBinary?.size ?: 0} bytes) - no Google device certificate. " +
+                        "Quest Chromecast mode will fail here (expected). Use Camera -> Cast -> Computer via oculus.com/casting screen instead. " +
+                        "For full Cast: need replay certs (Shanocast method) or enable Bypass Device Auth on sender via adb.",
                 )
             }
 
