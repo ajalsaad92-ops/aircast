@@ -70,6 +70,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Job-level, not step-level: a step's own `env:` block is not in scope for
+      # that step's `if:`, so a step-scoped secret would make the guard always false
+      # and silently publish unsigned artefacts.
+      KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -113,6 +118,19 @@ jobs:
           chmod +x android/gradlew
           cd android
           ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
+
+      # Makes a silently-unsigned release visible in the log instead of only at
+      # install time on someone's device.
+      - name: Report signing status
+        run: |
+          ls -la android/app/build/outputs/apk/release/
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -n1)
+          if [ -f android/keystore.properties ]; then
+            "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$APK" \
+              || echo "::error::signing was configured but apksigner could not verify $APK"
+          else
+            echo "::warning::No signing secrets configured - publishing an UNSIGNED build."
+          fi
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

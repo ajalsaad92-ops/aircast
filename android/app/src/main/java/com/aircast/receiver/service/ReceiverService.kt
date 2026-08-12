@@ -371,14 +371,23 @@ class ReceiverService : Service() {
 
     private fun startForegroundSafely() {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
+            when {
+                // `specialUse` is the only accurate type here — the service holds
+                // sockets and discovery, it does not itself play anything — and it is
+                // the one that survives being started from BOOT_COMPLETED on API 34+.
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> startForeground(
                     NOTIFICATION_ID,
                     buildNotification(),
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
                 )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification())
+
+                else -> startForeground(NOTIFICATION_ID, buildNotification())
             }
         } catch (e: Exception) {
             Logger.e("service", "startForeground failed: ${e.message}")

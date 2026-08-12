@@ -100,6 +100,12 @@
     </label>
   </div>
 
+  <label class="field" id="pinField" style="display:none">
+    <span lang-ar>رمز PIN المعروض على جهاز الاستقبال</span>
+    <span lang-en>PIN shown on the receiver</span>
+    <input id="pin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••">
+  </label>
+
   <label class="check"><input type="checkbox" id="audio" checked>
     <span lang-ar>مشاركة صوت النظام (إن توفّر)</span>
     <span lang-en>Share system audio (when available)</span>
@@ -140,6 +146,8 @@
     stopped:   ['تم إيقاف المشاركة', 'Sharing stopped'],
     denied:    ['تم رفض الإذن', 'Permission denied'],
     insecure:  ['المتصفّح يمنع الالتقاط خارج الاتصال الآمن', 'Your browser blocks capture outside a secure context'],
+    badpin:    ['رمز PIN غير صحيح', 'Wrong PIN'],
+    needpin:   ['أدخل رمز PIN أولاً', 'Enter the PIN first'],
     failed:    ['تعذّر الاتصال — تأكّد أن الجهازين على نفس الشبكة', 'Connection failed — check both devices are on the same network'],
     nosupport: ['هذا المتصفّح لا يدعم مشاركة الشاشة', 'This browser cannot share a screen']
   };
@@ -157,6 +165,11 @@
   });
 
   el('quality').value = '{{QUALITY}}';
+
+  // The receiver only tells us *whether* a PIN is set; the value itself is checked
+  // server-side on the offer, so nothing here can leak it.
+  var PIN_REQUIRED = '{{PIN_REQUIRED}}' === '1';
+  if (PIN_REQUIRED) el('pinField').style.display = 'block';
 
   function post(path, payload) {
     return fetch(BASE + path, {
@@ -182,6 +195,11 @@
   async function start() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       say(window.isSecureContext ? 'nosupport' : 'insecure', 'bad');
+      return;
+    }
+    if (PIN_REQUIRED && !el('pin').value.trim()) {
+      say('needpin', 'bad');
+      el('pin').focus();
       return;
     }
     stopped = false;
@@ -230,9 +248,17 @@
     await pc.setLocalDescription(offer);
 
     var res = await post('/mirror/offer', {
-      id: PEER_ID, name: senderLabel(), sdp: pc.localDescription.sdp
+      id: PEER_ID,
+      name: senderLabel(),
+      sdp: pc.localDescription.sdp,
+      pin: PIN_REQUIRED ? el('pin').value.trim() : ''
     });
-    if (!res.ok) { say('failed', 'bad'); stop(); return; }
+    if (!res.ok) {
+      var reason = await res.json().catch(function () { return {}; });
+      say(reason.error === 'pin' ? 'badpin' : 'failed', 'bad');
+      stop();
+      return;
+    }
 
     el('start').style.display = 'none';
     el('stop').style.display = 'block';

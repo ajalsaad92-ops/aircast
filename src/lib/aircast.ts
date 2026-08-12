@@ -77,7 +77,7 @@ export interface Settings {
   dlnaEnabled: boolean;
   airplayEnabled: boolean;
   mirrorEnabled: boolean;
-  requireApproval: boolean;
+  /** Empty means no PIN is required to start a mirroring session. */
   pinCode: string;
   autoStart: boolean;
   keepScreenOn: boolean;
@@ -188,7 +188,6 @@ const webFallback: AirCastPlugin = (() => {
     dlnaEnabled: true,
     airplayEnabled: true,
     mirrorEnabled: true,
-    requireApproval: false,
     pinCode: '',
     autoStart: true,
     keepScreenOn: true,

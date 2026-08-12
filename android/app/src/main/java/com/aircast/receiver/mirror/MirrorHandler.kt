@@ -64,6 +64,7 @@ class MirrorHandler(private val context: Context) {
             asset("sender.html")
                 .replace("{{DEVICE_NAME}}", escape(prefs.deviceName))
                 .replace("{{QUALITY}}", prefs.mirrorQuality.toString())
+                .replace("{{PIN_REQUIRED}}", if (prefs.pinCode.isNotEmpty()) "1" else "0")
                 .replace("{{PEER_ID}}", UUID.randomUUID().toString()),
         )
     }

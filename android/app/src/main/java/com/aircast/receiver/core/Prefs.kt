@@ -26,11 +26,7 @@ class Prefs private constructor(context: Context) {
         get() = sp.getBoolean(K_MIRROR, true)
         set(v) = sp.edit().putBoolean(K_MIRROR, v).apply()
 
-    /** Ask on-screen before a new sender is allowed to take over the display. */
-    var requireApproval: Boolean
-        get() = sp.getBoolean(K_APPROVAL, false)
-        set(v) = sp.edit().putBoolean(K_APPROVAL, v).apply()
-
+    /** Empty means anyone on the LAN may start a mirroring session. */
     var pinCode: String
         get() = sp.getString(K_PIN, "") ?: ""
         set(v) = sp.edit().putString(K_PIN, v.filter { it.isDigit() }.take(6)).apply()
@@ -86,7 +82,6 @@ class Prefs private constructor(context: Context) {
         .put("dlnaEnabled", dlnaEnabled)
         .put("airplayEnabled", airplayEnabled)
         .put("mirrorEnabled", mirrorEnabled)
-        .put("requireApproval", requireApproval)
         .put("pinCode", pinCode)
         .put("autoStart", autoStart)
         .put("keepScreenOn", keepScreenOn)
@@ -102,7 +97,6 @@ class Prefs private constructor(context: Context) {
         if (o.has("dlnaEnabled")) dlnaEnabled = o.optBoolean("dlnaEnabled", true)
         if (o.has("airplayEnabled")) airplayEnabled = o.optBoolean("airplayEnabled", true)
         if (o.has("mirrorEnabled")) mirrorEnabled = o.optBoolean("mirrorEnabled", true)
-        if (o.has("requireApproval")) requireApproval = o.optBoolean("requireApproval", false)
         if (o.has("pinCode")) pinCode = o.optString("pinCode")
         if (o.has("autoStart")) autoStart = o.optBoolean("autoStart", true)
         if (o.has("keepScreenOn")) keepScreenOn = o.optBoolean("keepScreenOn", true)
@@ -120,7 +114,6 @@ class Prefs private constructor(context: Context) {
         private const val K_DLNA = "dlna_enabled"
         private const val K_AIRPLAY = "airplay_enabled"
         private const val K_MIRROR = "mirror_enabled"
-        private const val K_APPROVAL = "require_approval"
         private const val K_PIN = "pin_code"
         private const val K_AUTOSTART = "auto_start"
         private const val K_AWAKE = "keep_screen_on"

@@ -45,7 +45,6 @@ export function SettingsPage() {
     { key: 'autoStart', label: t('settings.autoStart') },
     { key: 'keepScreenOn', label: t('settings.keepScreenOn') },
     { key: 'recordAudio', label: t('settings.recordAudio') },
-    { key: 'requireApproval', label: t('settings.pin.hint') },
   ];
 
   return (
@@ -101,7 +100,7 @@ export function SettingsPage() {
       </Panel>
 
       <Panel title={t('settings.behaviour')} flush index={2}>
-        {toggles.slice(0, 3).map(({ key, label }) => (
+        {toggles.map(({ key, label }) => (
           <div className="strip" key={String(key)} data-on={Boolean(settings[key])}>
             <span className="strip__led" />
             <div className="strip__text">
