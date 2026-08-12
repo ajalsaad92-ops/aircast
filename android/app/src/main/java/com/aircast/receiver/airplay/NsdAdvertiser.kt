@@ -53,6 +53,31 @@ class NsdAdvertiser(private val context: Context) {
             attributes = raopTxt(),
         )
 
+        // Google Cast. Senders locate receivers purely by this record, so getting the TXT
+        // keys right is what decides whether AirCast shows up in a Cast menu at all.
+        // `ca` is a capability bitmask: 0x1001 = video out + audio out, which is what a
+        // sender checks before offering screen mirroring.
+        register(
+            manager,
+            serviceName = name,
+            type = "_googlecast._tcp",
+            port = com.aircast.receiver.cast.CastV2.PORT,
+            attributes = mapOf(
+                "id" to castDeviceId(),
+                "cd" to castDeviceId().uppercase(),
+                "rm" to "",
+                "ve" to "05",
+                "md" to "Chromecast",
+                "ic" to "/setup/icon.png",
+                "fn" to name,
+                "ca" to "4101",
+                "st" to "0",
+                "bs" to deviceId.uppercase(),
+                "nf" to "1",
+                "rs" to "",
+            ),
+        )
+
         // Our own record, used by the companion sender page to find the box by name.
         register(
             manager,
@@ -137,6 +162,12 @@ class NsdAdvertiser(private val context: Context) {
         "pk" to "",
         "pi" to Net.uuid(context),
     )
+
+    /** 32 hex digits, the shape senders expect in the Cast `id` record. */
+    private fun castDeviceId(): String {
+        val uuid = Net.uuid(context).replace("-", "")
+        return (uuid + uuid).take(32).lowercase()
+    }
 
     private fun raopTxt() = mapOf(
         "txtvers" to "1",

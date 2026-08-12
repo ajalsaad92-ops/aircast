@@ -58,6 +58,7 @@ class ReceiverService : Service() {
     private var airplayServer: HttpServer? = null
     private var ssdp: Ssdp? = null
     private var nsd: NsdAdvertiser? = null
+    private var cast: com.aircast.receiver.cast.CastReceiver? = null
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var tickThread: Thread? = null
@@ -121,6 +122,9 @@ class ReceiverService : Service() {
         if (prefs.dlnaEnabled) {
             ssdp = Ssdp(this) { prefs.httpPort }.also { it.start() }
         }
+        // The Cast control channel comes up before the mDNS record that points at it, so
+        // a sender that reacts to the announcement instantly still finds an open port.
+        cast = com.aircast.receiver.cast.CastReceiver(this).also { it.start() }
         if (prefs.airplayEnabled) {
             nsd = NsdAdvertiser(this).also { it.start(prefs.airplayPort, prefs.httpPort) }
         }
@@ -148,6 +152,7 @@ class ReceiverService : Service() {
 
         ssdp?.stop(); ssdp = null
         nsd?.stop(); nsd = null
+        cast?.stop(); cast = null
         httpServer?.stop(); httpServer = null
         httpsServer?.stop(); httpsServer = null
         airplayServer?.stop(); airplayServer = null
