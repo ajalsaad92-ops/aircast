@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      The receiver talks to media sources on the local network over plain HTTP
+      (DLNA content URLs, AirPlay `Content-Location`, its own loopback control API),
+      so cleartext must stay enabled. Nothing here weakens TLS for public hosts.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

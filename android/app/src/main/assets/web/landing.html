@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AirCast — {{DEVICE_NAME}}</title>
+<style>
+  :root{--bg:#070b14;--panel:#0f1626;--line:#1e2a41;--ink:#e8eefc;--muted:#8ea2c6;
+    --accent:#38bdf8;--accent-2:#6366f1}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;padding:32px 20px;color:var(--ink);
+    background:radial-gradient(1100px 600px at 80% -10%,#14224a 0,transparent 60%),
+      radial-gradient(900px 500px at -10% 110%,#10233c 0,transparent 55%),var(--bg);
+    font:16px/1.65 "Segoe UI",system-ui,-apple-system,"Noto Sans Arabic",sans-serif}
+  .wrap{max-width:820px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .logo{width:48px;height:48px;border-radius:14px;flex:0 0 auto;
+    background:linear-gradient(135deg,#1b2a5b,#0ea5e9);display:grid;place-items:center}
+  h1{margin:0;font-size:1.4rem;font-weight:650}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:.95rem}
+  .sub b{color:var(--accent)}
+  .cta{display:block;text-decoration:none;text-align:center;margin-bottom:30px;
+    background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#04121f;
+    font-weight:650;padding:16px;border-radius:14px}
+  .cta small{display:block;font-weight:400;opacity:.75;margin-top:2px}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .box{background:rgba(15,22,38,.8);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .box h2{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
+  .box p{margin:0;color:var(--muted);font-size:.88rem}
+  .box ol{margin:8px 0 0;padding-inline-start:18px;color:var(--muted);font-size:.88rem}
+  code{background:#0b1220;padding:2px 6px;border-radius:6px;color:var(--accent);font-size:.85em}
+  footer{margin-top:28px;color:var(--muted);font-size:.8rem;text-align:center}
+  .lang{position:fixed;top:16px;inset-inline-end:16px;background:rgba(15,22,38,.85);
+    border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 14px;
+    font:inherit;font-size:.8rem;cursor:pointer}
+  [lang-en]{display:none}
+  html[lang=en] [lang-ar]{display:none}
+  html[lang=en] [lang-en]{display:revert}
+</style>
+</head>
+<body>
+<button class="lang" id="lang" type="button">English / عربي</button>
+<div class="wrap">
+  <header>
+    <span class="logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+        <path d="M4 20a2 2 0 0 1 0-4"/><path d="M4 16a6 6 0 0 1 0-8" opacity=".8"/>
+        <path d="M4 8a10 10 0 0 1 0-4" opacity=".55"/><circle cx="4.2" cy="20" r="1.4" fill="#fff" stroke="none"/>
+      </svg>
+    </span>
+    <div>
+      <h1>AirCast</h1>
+      <p class="sub" style="margin:0">
+        <span lang-ar>هذا الجهاز يستقبل باسم</span><span lang-en>This receiver is</span>
+        <b>{{DEVICE_NAME}}</b> · <code>{{IP}}</code>
+      </p>
+    </div>
+  </header>
+
+  <a class="cta" href="{{HTTPS_URL}}" id="mirrorLink">
+    <span lang-ar>مشاركة شاشة هذا الجهاز</span><span lang-en>Mirror this device's screen</span>
+    <small>
+      <span lang-ar>Chrome / Edge على ويندوز، ماك، لينكس، أندرويد — سيطلب المتصفّح تأكيد الشهادة أول مرة</span>
+      <span lang-en>Chrome / Edge on Windows, Mac, Linux, Android — the browser asks you to trust the certificate once</span>
+    </small>
+  </a>
+
+  <div class="grid">
+    <div class="box">
+      <h2>📱 <span lang-ar>آيفون / آيباد / ماك</span><span lang-en>iPhone / iPad / Mac</span></h2>
+      <ol>
+        <li><span lang-ar>افتح مركز التحكّم</span><span lang-en>Open Control Centre</span></li>
+        <li><span lang-ar>اختر «AirPlay» ثم <b>{{DEVICE_NAME}}</b></span><span lang-en>Pick AirPlay, then <b>{{DEVICE_NAME}}</b></span></li>
+        <li><span lang-ar>أو استخدم زر AirPlay داخل تطبيقات الفيديو</span><span lang-en>Or use the AirPlay button inside video apps</span></li>
+      </ol>
+    </div>
+
+    <div class="box">
+      <h2>🤖 <span lang-ar>أندرويد</span><span lang-en>Android</span></h2>
+      <ol>
+        <li><span lang-ar>من معرض الصور أو مشغّل الفيديو اختر «إرسال / Cast»</span><span lang-en>In Gallery or a video player choose “Cast”</span></li>
+        <li><span lang-ar>أو استخدم VLC / BubbleUPnP واختر <b>{{DEVICE_NAME}}</b></span><span lang-en>Or use VLC / BubbleUPnP and select <b>{{DEVICE_NAME}}</b></span></li>
+      </ol>
+    </div>
+
+    <div class="box">
+      <h2>🪟 <span lang-ar>ويندوز</span><span lang-en>Windows</span></h2>
+      <ol>
+        <li><span lang-ar>انقر بزر الفأرة الأيمن على ملف الفيديو</span><span lang-en>Right-click a video file</span></li>
+        <li><span lang-ar>«Cast to Device» ثم <b>{{DEVICE_NAME}}</b></span><span lang-en>“Cast to Device”, then <b>{{DEVICE_NAME}}</b></span></li>
+      </ol>
+    </div>
+
+    <div class="box">
+      <h2>🎬 <span lang-ar>VLC وبقية المشغّلات</span><span lang-en>VLC and other players</span></h2>
+      <p>
+        <span lang-ar>أي تطبيق يدعم DLNA / UPnP سيجد هذا الجهاز تلقائياً على نفس الشبكة.</span>
+        <span lang-en>Any DLNA / UPnP capable app finds this receiver automatically on the same network.</span>
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    AirCast Receiver 1.0.0 · <code>{{IP}}:{{HTTP_PORT}}</code>
+  </footer>
+</div>
+<script>
+  document.getElementById('lang').addEventListener('click', function () {
+    var next = document.documentElement.lang === 'en' ? 'ar' : 'en';
+    document.documentElement.lang = next;
+    document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+  });
+  if ('{{MIRROR_ENABLED}}' !== '1') {
+    var link = document.getElementById('mirrorLink');
+    link.style.opacity = '.45';
+    link.style.pointerEvents = 'none';
+  }
+</script>
+</body>
+</html>

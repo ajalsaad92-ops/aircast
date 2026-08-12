@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AirCast</string>
+    <string name="title_activity_main">AirCast</string>
+    <string name="package_name">com.aircast.receiver</string>
+    <string name="custom_url_scheme">com.aircast.receiver</string>
+
+    <string name="notification_channel_name">Receiver</string>
+    <string name="notification_channel_desc">Keeps AirCast discoverable on your network</string>
+    <string name="notification_ready">Ready at %1$s</string>
+    <string name="notification_connected">%1$d device(s) connected</string>
+    <string name="notification_playing">Playing: %1$s</string>
+    <string name="action_stop">Stop</string>
+
+    <string name="recording_channel_name">Screen recording</string>
+    <string name="recording_channel_desc">Shown while AirCast is recording the screen</string>
+    <string name="recording_title">Recording the screen</string>
+    <string name="recording_text">Tap to return to AirCast</string>
+
+    <string name="player_untitled">Now playing</string>
+    <string name="player_error">Cannot play this media</string>
+    <string name="player_photo">Received photo</string>
+    <string name="player_audio_art">Audio</string>
+</resources>

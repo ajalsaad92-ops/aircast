@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AirCast — مشاركة الشاشة</title>
+<style>
+  :root{
+    --bg:#070b14; --panel:#0f1626; --line:#1e2a41; --ink:#e8eefc; --muted:#8ea2c6;
+    --accent:#38bdf8; --accent-2:#6366f1; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;background:
+      radial-gradient(1100px 600px at 80% -10%, #14224a 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, #10233c 0%, transparent 55%), var(--bg);
+    color:var(--ink);font:16px/1.6 "Segoe UI",system-ui,-apple-system,"Noto Sans Arabic",sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .card{width:min(560px,100%);background:rgba(15,22,38,.82);border:1px solid var(--line);
+    border-radius:var(--radius);padding:28px;backdrop-filter:blur(14px);
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .logo{width:42px;height:42px;border-radius:12px;flex:0 0 auto;
+    background:linear-gradient(135deg,#1b2a5b,#0ea5e9);display:grid;place-items:center}
+  .logo svg{width:24px;height:24px}
+  h1{font-size:1.25rem;margin:0;font-weight:650;letter-spacing:-.01em}
+  .target{color:var(--muted);font-size:.9rem;margin:0 0 22px}
+  .target b{color:var(--accent)}
+  .status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;
+    background:#0b1220;border:1px solid var(--line);margin-bottom:18px;font-size:.92rem}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+  .dot.live{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.18);animation:pulse 1.8s infinite}
+  .dot.busy{background:var(--warn)}
+  .dot.bad{background:var(--err)}
+  @keyframes pulse{50%{box-shadow:0 0 0 9px rgba(52,211,153,0)}}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  label.field{flex:1 1 150px;font-size:.8rem;color:var(--muted)}
+  select,input{width:100%;margin-top:6px;background:#0b1220;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:.92rem}
+  .check{display:flex;align-items:center;gap:9px;font-size:.9rem;color:var(--muted);margin-bottom:18px}
+  .check input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+  button{width:100%;border:0;border-radius:12px;padding:14px 18px;font:inherit;font-weight:650;
+    cursor:pointer;transition:transform .12s ease,filter .12s ease}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .primary{background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#04121f}
+  .ghost{background:transparent;color:var(--ink);border:1px solid var(--line);margin-top:10px}
+  video{width:100%;border-radius:12px;border:1px solid var(--line);margin-top:18px;display:none;background:#000}
+  .hint{font-size:.82rem;color:var(--muted);margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .hint code{background:#0b1220;padding:2px 6px;border-radius:6px;color:var(--accent)}
+  .lang{position:fixed;top:16px;inset-inline-end:16px;background:rgba(15,22,38,.8);
+    border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 14px;
+    font-size:.8rem;cursor:pointer;width:auto}
+  [lang-en]{display:none}
+  html[lang=en] [lang-ar]{display:none}
+  html[lang=en] [lang-en]{display:inline}
+</style>
+</head>
+<body>
+<button class="lang ghost" id="lang" type="button">English / عربي</button>
+
+<main class="card">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+        <path d="M4 20a2 2 0 0 1 0-4"/><path d="M4 16a6 6 0 0 1 0-8" opacity=".8"/>
+        <path d="M4 8a10 10 0 0 1 0-4" opacity=".55"/><circle cx="4.2" cy="20" r="1.4" fill="#fff" stroke="none"/>
+      </svg>
+    </span>
+    <div>
+      <h1><span lang-ar>مشاركة الشاشة</span><span lang-en>Share your screen</span></h1>
+      <p class="target">
+        <span lang-ar>سيتم البث إلى</span><span lang-en>Casting to</span>
+        <b>{{DEVICE_NAME}}</b>
+      </p>
+    </div>
+  </div>
+
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">جاهز</span></div>
+
+  <div class="row">
+    <label class="field">
+      <span lang-ar>الجودة</span><span lang-en>Quality</span>
+      <select id="quality">
+        <option value="720">720p — 30fps</option>
+        <option value="1080">1080p — 30fps</option>
+        <option value="1440">1440p — 30fps</option>
+        <option value="2160">4K — 30fps</option>
+      </select>
+    </label>
+    <label class="field">
+      <span lang-ar>معدل الإطارات</span><span lang-en>Frame rate</span>
+      <select id="fps">
+        <option value="15">15 fps</option>
+        <option value="30" selected>30 fps</option>
+        <option value="60">60 fps</option>
+      </select>
+    </label>
+  </div>
+
+  <label class="check"><input type="checkbox" id="audio" checked>
+    <span lang-ar>مشاركة صوت النظام (إن توفّر)</span>
+    <span lang-en>Share system audio (when available)</span>
+  </label>
+
+  <button class="primary" id="start" type="button">
+    <span lang-ar>بدء المشاركة</span><span lang-en>Start sharing</span>
+  </button>
+  <button class="ghost" id="stop" type="button" style="display:none">
+    <span lang-ar>إيقاف</span><span lang-en>Stop</span>
+  </button>
+
+  <video id="preview" muted playsinline></video>
+
+  <p class="hint">
+    <span lang-ar>لا حاجة لتثبيت أي شيء على هذا الجهاز. تعمل المشاركة في Chrome و Edge و Opera على ويندوز وماك ولينكس و ChromeOS. متصفّح Safari يدعم <code>getDisplayMedia</code> على macOS فقط، ولا يدعمه على iOS — استخدم AirPlay من مركز التحكّم بدلاً من ذلك.</span>
+    <span lang-en>Nothing to install on this device. Sharing works in Chrome, Edge and Opera on Windows, macOS, Linux and ChromeOS. Safari supports <code>getDisplayMedia</code> on macOS only — on iOS use AirPlay from Control Centre instead.</span>
+  </p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var PEER_ID = '{{PEER_ID}}';
+  var BASE = location.origin;
+  var pc = null, stream = null, pollTimer = null, iceTimer = null, pingTimer = null;
+  var sentIce = 0, seenIce = 0, stopped = false;
+
+  var el = function (id) { return document.getElementById(id); };
+  var dot = el('dot'), statusText = el('statusText');
+
+  var T = {
+    ready:     ['جاهز للمشاركة', 'Ready to share'],
+    asking:    ['اختر النافذة أو الشاشة…', 'Choose a window or screen…'],
+    connecting:['جارٍ الاتصال بالمستقبِل…', 'Connecting to the receiver…'],
+    live:      ['يتم البث الآن', 'Live'],
+    stopped:   ['تم إيقاف المشاركة', 'Sharing stopped'],
+    denied:    ['تم رفض الإذن', 'Permission denied'],
+    insecure:  ['المتصفّح يمنع الالتقاط خارج الاتصال الآمن', 'Your browser blocks capture outside a secure context'],
+    failed:    ['تعذّر الاتصال — تأكّد أن الجهازين على نفس الشبكة', 'Connection failed — check both devices are on the same network'],
+    nosupport: ['هذا المتصفّح لا يدعم مشاركة الشاشة', 'This browser cannot share a screen']
+  };
+
+  function lang() { return document.documentElement.lang === 'en' ? 1 : 0; }
+  function say(key, kind) {
+    statusText.textContent = T[key] ? T[key][lang()] : key;
+    dot.className = 'dot' + (kind ? ' ' + kind : '');
+  }
+
+  el('lang').addEventListener('click', function () {
+    var next = document.documentElement.lang === 'en' ? 'ar' : 'en';
+    document.documentElement.lang = next;
+    document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+  });
+
+  el('quality').value = '{{QUALITY}}';
+
+  function post(path, payload) {
+    return fetch(BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+  }
+
+  function senderLabel() {
+    var ua = navigator.userAgent;
+    var os = /Windows/.test(ua) ? 'Windows' :
+             /Mac OS X/.test(ua) ? 'Mac' :
+             /Android/.test(ua) ? 'Android' :
+             /Linux/.test(ua) ? 'Linux' :
+             /iPhone|iPad/.test(ua) ? 'iOS' : 'Browser';
+    var app = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' :
+              /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' :
+              /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
+    return app + ' · ' + os;
+  }
+
+  async function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      say(window.isSecureContext ? 'nosupport' : 'insecure', 'bad');
+      return;
+    }
+    stopped = false;
+    el('start').disabled = true;
+    say('asking', 'busy');
+
+    var height = parseInt(el('quality').value, 10);
+    var fps = parseInt(el('fps').value, 10);
+
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { height: { ideal: height }, frameRate: { ideal: fps, max: fps } },
+        audio: el('audio').checked
+      });
+    } catch (err) {
+      el('start').disabled = false;
+      say(err && err.name === 'NotAllowedError' ? 'denied' : 'nosupport', 'bad');
+      return;
+    }
+
+    var preview = el('preview');
+    preview.srcObject = stream;
+    preview.style.display = 'block';
+    preview.play().catch(function () {});
+    stream.getVideoTracks()[0].addEventListener('ended', stop);
+
+    say('connecting', 'busy');
+
+    // No ICE servers: both peers sit on the same LAN, so host candidates are enough
+    // and skipping STUN removes a dependency on internet access entirely.
+    pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
+    stream.getTracks().forEach(function (t) { pc.addTrack(t, stream); });
+
+    pc.onicecandidate = function (e) {
+      if (!e.candidate) return;
+      post('/mirror/ice?id=' + PEER_ID, { candidate: e.candidate.toJSON() }).catch(function () {});
+    };
+    pc.onconnectionstatechange = function () {
+      var s = pc.connectionState;
+      if (s === 'connected') { say('live', 'live'); }
+      else if (s === 'failed') { say('failed', 'bad'); stop(); }
+      else if (s === 'disconnected') { say('connecting', 'busy'); }
+    };
+
+    var offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    var res = await post('/mirror/offer', {
+      id: PEER_ID, name: senderLabel(), sdp: pc.localDescription.sdp
+    });
+    if (!res.ok) { say('failed', 'bad'); stop(); return; }
+
+    el('start').style.display = 'none';
+    el('stop').style.display = 'block';
+
+    pollTimer = setInterval(pollAnswer, 500);
+    iceTimer = setInterval(pollIce, 700);
+    pingTimer = setInterval(function () {
+      fetch(BASE + '/mirror/ping?id=' + PEER_ID).catch(function () {});
+    }, 10000);
+  }
+
+  async function pollAnswer() {
+    if (!pc || pc.remoteDescription) { clearInterval(pollTimer); pollTimer = null; return; }
+    try {
+      var r = await fetch(BASE + '/mirror/answer?id=' + PEER_ID);
+      if (r.status !== 200) return;
+      var data = await r.json();
+      if (!data.sdp || pc.remoteDescription) return;
+      await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+      clearInterval(pollTimer); pollTimer = null;
+    } catch (e) { /* receiver not ready yet */ }
+  }
+
+  async function pollIce() {
+    if (!pc) return;
+    try {
+      var r = await fetch(BASE + '/mirror/ice?id=' + PEER_ID + '&since=' + seenIce);
+      if (!r.ok) return;
+      var list = await r.json();
+      for (var i = 0; i < list.length; i++) {
+        seenIce++;
+        try { await pc.addIceCandidate(list[i]); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    [pollTimer, iceTimer, pingTimer].forEach(function (t) { if (t) clearInterval(t); });
+    pollTimer = iceTimer = pingTimer = null;
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+    fetch(BASE + '/mirror/bye?id=' + PEER_ID, { method: 'POST' }).catch(function () {});
+    el('preview').style.display = 'none';
+    el('preview').srcObject = null;
+    el('start').style.display = 'block';
+    el('start').disabled = false;
+    el('stop').style.display = 'none';
+    say('stopped');
+  }
+
+  el('start').addEventListener('click', start);
+  el('stop').addEventListener('click', stop);
+  window.addEventListener('pagehide', stop);
+
+  say(window.isSecureContext ? 'ready' : 'insecure', window.isSecureContext ? '' : 'bad');
+  void sentIce;
+})();
+</script>
+</body>
+</html>
