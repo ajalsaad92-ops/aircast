@@ -360,10 +360,11 @@ class DlnaHandler(private val context: Context) {
                 if (result == null) return HttpResponse.text("Precondition Failed", 412)
                 val (sid, timeout) = result
                 if (existingSid == null) Gena.sendInitial(sid, initialStateFor(service))
+                // No explicit Content-Length here: the writer already emits one, and a
+                // duplicated header makes strict UPnP controllers drop the subscription.
                 HttpResponse.empty(200).also {
                     it.headers["SID"] = sid
                     it.headers["TIMEOUT"] = "Second-$timeout"
-                    it.headers["Content-Length"] = "0"
                 }
             }
 

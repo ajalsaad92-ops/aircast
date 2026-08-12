@@ -178,8 +178,10 @@ class AirCastPlugin : Plugin() {
         val since = call.getInt("since") ?: 0
         val peer = MirrorSignaling.peer(id)
             ?: return call.resolve(JSObject().put("candidates", JSArray()))
+        // Round-tripping through text rather than JSArray.from(): that helper is
+        // documented for arrays and collections, not for a JSONArray.
         val arr = MirrorSignaling.candidatesSince(peer.senderCandidates, since)
-        call.resolve(JSObject().put("candidates", JSArray.from(arr)))
+        call.resolve(JSObject().put("candidates", JSArray(arr.toString())))
     }
 
     @PluginMethod
