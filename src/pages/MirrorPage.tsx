@@ -137,9 +137,23 @@ export function MirrorPage() {
       </Panel>
 
       <Panel title={t('quest.title')} index={1}>
-        <p style={{ margin: '0 0 14px', color: 'var(--ink-2)', fontSize: '0.87rem' }}>
+        <p style={{ margin: '0 0 14px', color: 'var(--ink-2)', fontSize: '0.87rem', lineHeight: 1.7 }}>
           {t('quest.desc')}
         </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink-3)', fontSize: '0.82rem' }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid rgba(242,167,59,0.4)', display: 'grid', placeItems: 'center', color: 'var(--amber)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>1</span>
+            {t('quest.step1' as never)}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink-3)', fontSize: '0.82rem' }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid rgba(242,167,59,0.4)', display: 'grid', placeItems: 'center', color: 'var(--amber)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>2</span>
+            {t('quest.step2' as never)}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink-3)', fontSize: '0.82rem' }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid rgba(242,167,59,0.4)', display: 'grid', placeItems: 'center', color: 'var(--amber)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>3</span>
+            {t('quest.step3' as never)}
+          </div>
+        </div>
         <button
           type="button"
           className="btn btn--amber"
@@ -147,6 +161,7 @@ export function MirrorPage() {
         >
           <ScreenIcon /> {t('quest.open')}
         </button>
+        <p className="note">{t('quest.castFailed' as never)}</p>
         <p className="note note--muted">{t('quest.note')}</p>
       </Panel>
 

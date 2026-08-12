@@ -64,12 +64,16 @@ const dict = {
     'mirror.fullscreen': 'ملء الشاشة',
     'mirror.exitFullscreen': 'اضغط للخروج من ملء الشاشة',
     'quality.auto': 'تلقائي',
-    'quest.title': 'نظارة Meta Quest',
+    'quest.title': 'نظارة Meta Quest 3 / 3S',
     'quest.desc':
-      'نظارات Quest لا ترسل عبر AirPlay أو DLNA أو Miracast — تبثّ إلى صفحة ويب فقط. افتح الشاشة أدناه على التلفزيون، ثم من النظارة: الكاميرا ← بث ← الحاسوب.',
-    'quest.open': 'فتح شاشة استقبال Quest',
+      'طريقتان: 1) Chromecast يظهر في النظارة لكنه سيفشل حاليا بسبب تحدي المصادقة (سترى في السجل auth challenge) — هذا متوقع في هذا الإصدار. 2) الطريقة الموثوقة: افتح شاشة الاستقبال أدناه على التلفاز وسجل دخول بنفس حساب Meta، ثم من النظارة: الكاميرا ← بث ← الحاسوب ← التالي وأدخل الرمز إن طلب.',
+    'quest.open': 'فتح شاشة استقبال Quest (وضع التلفاز)',
     'quest.note':
-      'يتطلّب تسجيل الدخول بحساب Meta واتصالاً بالإنترنت مرة واحدة لبدء الجلسة. بعدها يمرّ الفيديو نفسه عبر الشبكة المحلية.',
+      'وضع الحاسوب يعمل بدون حد زمني ويستخدم WebRTC. يحتاج انترنت وتسجيل دخول مرة واحدة، الفيديو بعدها محلي. إذا ظهر AirCast في قائمة Chromecast وفشل، استخدم طريقة الحاسوب.',
+    'quest.step1': 'افتح oculus.com/casting على التلفاز',
+    'quest.step2': 'سجل دخول بنفس حساب Meta للنظارة',
+    'quest.step3': 'في النظارة: الكاميرا ← بث ← الحاسوب',
+    'quest.castFailed': 'فشل بث Chromecast؟ هذا طبيعي — استخدم وضع الحاسوب أعلاه',
 
     'record.start': 'بدء التسجيل',
     'record.stop': 'إيقاف التسجيل',
@@ -189,12 +193,16 @@ const dict = {
     'mirror.fullscreen': 'Fullscreen',
     'mirror.exitFullscreen': 'Tap to leave fullscreen',
     'quality.auto': 'Auto',
-    'quest.title': 'Meta Quest headset',
+    'quest.title': 'Meta Quest 3 / 3S',
     'quest.desc':
-      'Quest headsets do not send over AirPlay, DLNA or Miracast — they cast to a web page only. Open the screen below on the TV, then in the headset: Camera → Cast → Computer.',
-    'quest.open': 'Open the Quest cast screen',
+      'Two paths: 1) Chromecast appears in headset but will fail with auth challenge (you see it in logs) — expected in this build. 2) Reliable: Open receiver screen below on TV, login with same Meta account, then in headset: Camera → Cast → Computer → Next and enter code.',
+    'quest.open': 'Open Quest receiver (TV mode)',
     'quest.note':
-      'Needs a Meta account sign-in and internet once to start the session. The video itself then travels over your local network.',
+      'Computer mode is unlimited and uses WebRTC. Needs internet + login once, video is local after. If AirCast appears under Chromecast and fails, use Computer mode.',
+    'quest.step1': 'Open oculus.com/casting on TV',
+    'quest.step2': 'Login with same Meta account as headset',
+    'quest.step3': 'In headset: Camera → Cast → Computer',
+    'quest.castFailed': 'Chromecast cast failed? Expected — use Computer mode above',
 
     'record.start': 'Start recording',
     'record.stop': 'Stop recording',

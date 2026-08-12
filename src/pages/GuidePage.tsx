@@ -68,7 +68,20 @@ export function GuidePage() {
         </ol>
       </Panel>
 
-      <Panel title={t('settings.notSupported')} index={4}>
+      <Panel title={t('quest.title')} index={4}>
+        <ol className="steps">
+          <li>{t('quest.step1' as never)}</li>
+          <li>{t('quest.step2' as never)}</li>
+          <li>{t('quest.step3' as never)}</li>
+        </ol>
+        <p className="note">{t('quest.castFailed' as never)}</p>
+        <p className="note note--muted">{t('quest.note')}</p>
+        <p className="note note--muted" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+          Log: device auth challenge (22 bytes) → expected until full Cast receiver with certs is implemented. Use Computer mode.
+        </p>
+      </Panel>
+
+      <Panel title={t('settings.notSupported')} index={5}>
         <p className="note note--muted" style={{ marginTop: 0 }}>
           {t('settings.notSupported.body')}
         </p>
