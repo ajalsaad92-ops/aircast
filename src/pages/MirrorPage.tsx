@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { useReceiver } from '../hooks/useReceiver';
 import { useMirror } from '../hooks/useMirror';
 import { Panel } from '../components/ui';
-import { CopyIcon, ExternalIcon, RecordIcon, StopIcon } from '../components/Icons';
+import { CopyIcon, ExternalIcon, RecordIcon, ScreenIcon, StopIcon } from '../components/Icons';
 import { AirCast } from '../lib/aircast';
 
 export function MirrorPage() {
@@ -13,14 +13,23 @@ export function MirrorPage() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [full, setFull] = useState(false);
   const mirrorUrl = status?.mirrorUrl ?? '';
 
+  // `full` is a dependency because switching layouts unmounts the old <video>.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     video.srcObject = stream;
     if (stream) void video.play().catch(() => undefined);
-  }, [stream]);
+  }, [stream, full]);
+
+  // A cast that has actually started should fill the TV without anyone reaching for
+  // the remote. Leaving the app chrome around a live picture is the single most
+  // common complaint about receivers that render mirroring inside their own UI.
+  useEffect(() => {
+    setFull(state === 'live');
+  }, [state]);
 
   useEffect(() => {
     if (!mirrorUrl) {
@@ -62,11 +71,32 @@ export function MirrorPage() {
     }
   };
 
+  if (full) {
+    return (
+      <div
+        className="fullstage"
+        role="button"
+        tabIndex={0}
+        onClick={() => setFull(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') setFull(false);
+        }}
+      >
+        <video ref={videoRef} autoPlay playsInline />
+        <span className="livetag">
+          <span className="livetag__dot" />
+          {t('mirror.live')} · {session?.name}
+        </span>
+        <span className="fullstage__hint">{t('mirror.exitFullscreen')}</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <Panel index={0}>
         <div className="stage">
-          <video ref={videoRef} muted={false} playsInline autoPlay />
+          <video ref={videoRef} playsInline autoPlay />
           {state !== 'live' && (
             <div className="stage__idle">
               <span className="stage__pulse" />
@@ -83,42 +113,48 @@ export function MirrorPage() {
               </span>
             </div>
           )}
-          {state === 'live' && (
-            <span className="livetag">
-              <span className="livetag__dot" />
-              {t('mirror.live')} · {session?.name}
-            </span>
-          )}
         </div>
 
-        {state === 'live' ? (
+        <button
+          type="button"
+          className={status?.recording ? 'btn btn--danger' : 'btn'}
+          style={{ marginTop: 14 }}
+          onClick={() => void toggleRecording()}
+        >
+          {status?.recording ? <StopIcon /> : <RecordIcon />}
+          {status?.recording ? t('record.stop') : t('record.start')}
+        </button>
+        {state === 'live' && (
           <button
             type="button"
             className="btn btn--danger"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: 10 }}
             onClick={() => void stop()}
           >
             <StopIcon /> {t('mirror.stop')}
           </button>
-        ) : (
-          <button
-            type="button"
-            className={status?.recording ? 'btn btn--danger' : 'btn'}
-            style={{ marginTop: 14 }}
-            onClick={() => void toggleRecording()}
-          >
-            {status?.recording ? <StopIcon /> : <RecordIcon />}
-            {status?.recording ? t('record.stop') : t('record.start')}
-          </button>
         )}
       </Panel>
 
+      <Panel title={t('quest.title')} index={1}>
+        <p style={{ margin: '0 0 14px', color: 'var(--ink-2)', fontSize: '0.87rem' }}>
+          {t('quest.desc')}
+        </p>
+        <button
+          type="button"
+          className="btn btn--amber"
+          onClick={() => void AirCast.openCastPage({})}
+        >
+          <ScreenIcon /> {t('quest.open')}
+        </button>
+        <p className="note note--muted">{t('quest.note')}</p>
+      </Panel>
+
       {settings?.mirrorEnabled && (
-        <Panel title={t('mirror.title')} index={1}>
+        <Panel title={t('mirror.title')} index={2}>
           <p style={{ margin: '0 0 4px', color: 'var(--ink-2)', fontSize: '0.87rem' }}>
             {t('mirror.howto')}
           </p>
-
           <div className="urlbox">
             <code>{mirrorUrl || '—'}</code>
             <button
@@ -138,11 +174,8 @@ export function MirrorPage() {
               <ExternalIcon />
             </button>
           </div>
-
           {qr && <img className="qr" src={qr} alt={mirrorUrl} />}
-
           <p className="note">{t('mirror.certNote')}</p>
-
           {!status?.tlsReady && status?.running && (
             <p className="note note--muted">{t('mirror.tlsMissing')}</p>
           )}

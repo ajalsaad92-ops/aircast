@@ -84,6 +84,7 @@
     <label class="field">
       <span lang-ar>الجودة</span><span lang-en>Quality</span>
       <select id="quality">
+        <option value="0">تلقائي / Auto</option>
         <option value="720">720p — 30fps</option>
         <option value="1080">1080p — 30fps</option>
         <option value="1440">1440p — 30fps</option>
@@ -210,8 +211,14 @@
     var fps = parseInt(el('fps').value, 10);
 
     try {
+      // height === 0 is "Auto": omit the constraint entirely so the browser hands
+      // over the display's native resolution. Passing `{ ideal: 0 }` instead would
+      // ask Chromium for a zero-pixel track, which it answers with the smallest
+      // size it can produce — the opposite of what "Auto" should mean.
+      var video = { frameRate: { ideal: fps, max: fps } };
+      if (height > 0) video.height = { ideal: height };
       stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { height: { ideal: height }, frameRate: { ideal: fps, max: fps } },
+        video: video,
         audio: el('audio').checked
       });
     } catch (err) {

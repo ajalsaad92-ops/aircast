@@ -1128,3 +1128,51 @@ button {
     min-width: 0;
   }
 }
+
+/* ----------------------------------------------------- full-screen cast -- */
+/* A live mirror takes the whole panel: fixed rather than absolute so it escapes
+   the scroll container, and above the nav bar so nothing overlaps the picture. */
+.fullstage {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #000;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.fullstage video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+.fullstage .livetag {
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  inset-inline-start: 16px;
+}
+
+.fullstage__hint {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  padding: 7px 15px;
+  border-radius: 999px;
+  background: rgba(7, 8, 11, 0.6);
+  border: 1px solid var(--seam);
+  color: var(--ink-3);
+  font-size: 0.76rem;
+  /* Fades out so it does not sit over the picture for the whole session, but is
+     present long enough for a first-time user to learn the gesture. */
+  animation: hintFade 5s var(--ease) forwards;
+}
+
+@keyframes hintFade {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; }
+}

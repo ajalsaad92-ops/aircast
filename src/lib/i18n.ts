@@ -62,6 +62,14 @@ const dict = {
     'mirror.certNote':
       'سيعرض المتصفّح تحذيراً بشأن الشهادة أول مرة لأنها صادرة من هذا الجهاز نفسه. اختر «متابعة» للاستمرار.',
     'mirror.fullscreen': 'ملء الشاشة',
+    'mirror.exitFullscreen': 'اضغط للخروج من ملء الشاشة',
+    'quality.auto': 'تلقائي',
+    'quest.title': 'نظارة Meta Quest',
+    'quest.desc':
+      'نظارات Quest لا ترسل عبر AirPlay أو DLNA أو Miracast — تبثّ إلى صفحة ويب فقط. افتح الشاشة أدناه على التلفزيون، ثم من النظارة: الكاميرا ← بث ← الحاسوب.',
+    'quest.open': 'فتح شاشة استقبال Quest',
+    'quest.note':
+      'يتطلّب تسجيل الدخول بحساب Meta واتصالاً بالإنترنت مرة واحدة لبدء الجلسة. بعدها يمرّ الفيديو نفسه عبر الشبكة المحلية.',
 
     'record.start': 'بدء التسجيل',
     'record.stop': 'إيقاف التسجيل',
@@ -179,6 +187,14 @@ const dict = {
     'mirror.certNote':
       'The browser warns about the certificate the first time because this device issued it itself. Choose “Proceed” to continue.',
     'mirror.fullscreen': 'Fullscreen',
+    'mirror.exitFullscreen': 'Tap to leave fullscreen',
+    'quality.auto': 'Auto',
+    'quest.title': 'Meta Quest headset',
+    'quest.desc':
+      'Quest headsets do not send over AirPlay, DLNA or Miracast — they cast to a web page only. Open the screen below on the TV, then in the headset: Camera → Cast → Computer.',
+    'quest.open': 'Open the Quest cast screen',
+    'quest.note':
+      'Needs a Meta account sign-in and internet once to start the session. The video itself then travels over your local network.',
 
     'record.start': 'Start recording',
     'record.stop': 'Stop recording',

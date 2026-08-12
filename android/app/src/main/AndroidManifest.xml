@@ -66,6 +66,16 @@
             android:resizeableActivity="true"
             android:theme="@style/AppTheme.Player" />
 
+        <!-- Full-screen browser used for headsets that can only cast to a web page
+             (Meta Quest). Hardware-accelerated so video decodes on the GPU. -->
+        <activity
+            android:name=".cast.CastWebActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:hardwareAccelerated="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:theme="@style/AppTheme.Player" />
+
         <!--
           Long-lived receiver: SSDP + HTTP(S) + mDNS advertising.
 

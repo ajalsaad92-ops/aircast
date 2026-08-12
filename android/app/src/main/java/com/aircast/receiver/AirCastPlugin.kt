@@ -251,6 +251,25 @@ class AirCastPlugin : Plugin() {
         )
     }
 
+    /**
+     * Opens a page full-screen inside AirCast. Used for headset casting, where the
+     * headset streams to a web page instead of to a discoverable receiver.
+     */
+    @PluginMethod
+    fun openCastPage(call: PluginCall) {
+        val url = call.getString("url") ?: com.aircast.receiver.cast.CastWebActivity.DEFAULT_URL
+        try {
+            activity.startActivity(
+                Intent(activity, com.aircast.receiver.cast.CastWebActivity::class.java)
+                    .putExtra(com.aircast.receiver.cast.CastWebActivity.EXTRA_URL, url)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            call.resolve(JSObject().put("opened", true))
+        } catch (e: Exception) {
+            call.reject("Cannot open the cast page: ${e.message}")
+        }
+    }
+
     @PluginMethod
     fun openExternal(call: PluginCall) {
         val url = call.getString("url") ?: return call.reject("url is required")

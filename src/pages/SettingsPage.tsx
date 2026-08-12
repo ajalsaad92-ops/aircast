@@ -137,6 +137,7 @@ export function SettingsPage() {
             disabled={busy}
             onChange={(e) => void saveSettings({ mirrorQuality: Number(e.target.value) })}
           >
+            <option value={0}>{t('quality.auto')}</option>
             <option value={720}>720p</option>
             <option value={1080}>1080p</option>
             <option value={1440}>1440p</option>

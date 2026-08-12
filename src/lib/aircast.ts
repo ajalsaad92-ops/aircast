@@ -128,6 +128,8 @@ export interface AirCastPlugin {
 
   ensureNotificationPermission(): Promise<{ granted: boolean }>;
   openExternal(options: { url: string }): Promise<void>;
+  /** Opens a URL full-screen inside the app (headset casting pages). */
+  openCastPage(options: { url?: string }): Promise<{ opened: boolean }>;
 
   addListener(
     eventName: 'statusChanged',
@@ -284,6 +286,10 @@ const webFallback: AirCastPlugin = (() => {
     ensureNotificationPermission: async () => ({ granted: true }),
     openExternal: async ({ url }) => {
       window.open(url, '_blank');
+    },
+    openCastPage: async ({ url }) => {
+      window.open(url ?? 'https://www.oculus.com/casting', '_blank');
+      return { opened: true };
     },
     addListener: handle,
     removeAllListeners: noop,
