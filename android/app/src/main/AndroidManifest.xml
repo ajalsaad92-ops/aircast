@@ -76,6 +76,15 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:theme="@style/AppTheme.Player" />
 
+        <!-- Full-screen WebRTC renderer for Quest Chromecast mirroring (step 2) -->
+        <activity
+            android:name=".cast.CastMirrorActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:hardwareAccelerated="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:theme="@style/AppTheme.Player" />
+
         <!--
           Long-lived receiver: SSDP + HTTP(S) + mDNS advertising.
 
