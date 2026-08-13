@@ -150,6 +150,30 @@ object TlsFactory {
         null
     }
 
+    /**
+     * The DER bytes of the server certificate and the key that signed it.
+     *
+     * Google Cast's device-auth step asks a receiver to sign the sender's nonce
+     * together with its own TLS certificate, so the Cast layer needs both halves of
+     * the identity this object already manages.
+     */
+    fun identity(context: Context): Pair<ByteArray, java.security.PrivateKey>? = try {
+        val storeFile = File(context.filesDir, STORE_NAME)
+        if (!storeFile.exists()) {
+            // Nothing generated yet: force a round so the caller is not left empty-handed.
+            sslContext(context)
+        }
+        val ks = KeyStore.getInstance("PKCS12").apply {
+            File(context.filesDir, STORE_NAME).inputStream().use { load(it, PASSWORD) }
+        }
+        val cert = ks.getCertificate(ALIAS) as? X509Certificate
+        val key = ks.getKey(ALIAS, PASSWORD) as? java.security.PrivateKey
+        if (cert != null && key != null) cert.encoded to key else null
+    } catch (e: Exception) {
+        Logger.w("tls", "identity unavailable: ${e.message}")
+        null
+    }
+
     /** Forces a fresh certificate on the next call — used when the network changes. */
     fun invalidate() {
         cached = null
