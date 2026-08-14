@@ -1,8 +1,0 @@
-feat(cast): clean fullscreen picture - auto-dismiss overlays (point 2)
-
-CastWebActivity: JS->native bridge dismisses the instruction overlay the
-moment real casting video plays; fallback auto-hide 12s->6s.
-MirrorPage: fade Live badge + exit hint after 4s in fullscreen so nothing
-from the app sits over the cast.
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
