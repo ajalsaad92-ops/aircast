@@ -228,6 +228,47 @@ class AirCastPlugin : Plugin() {
         call.resolve(JSObject().put("recording", RecorderService.isRecording))
     }
 
+    // ---- native screen-cast sender (point 1 / 7) ----------------------------
+
+    @PluginMethod
+    fun startScreenCast(call: PluginCall) {
+        val host = call.getString("host")
+        if (host.isNullOrBlank()) return call.reject("host required")
+        if (com.aircast.receiver.sender.ScreenCastService.isCasting) {
+            return call.resolve(JSObject().put("casting", true))
+        }
+        try {
+            val manager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE)
+                as MediaProjectionManager
+            startActivityForResult(call, manager.createScreenCaptureIntent(), "castResult")
+        } catch (e: Exception) {
+            call.reject("Screen capture unavailable: ${e.message}")
+        }
+    }
+
+    @ActivityCallback
+    private fun castResult(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        val data = result.data
+        if (result.resultCode != android.app.Activity.RESULT_OK || data == null) {
+            call.resolve(JSObject().put("casting", false).put("cancelled", true))
+            return
+        }
+        val host = call.getString("host")
+        if (host.isNullOrBlank()) return call.reject("host required")
+        val port = call.getInt("port") ?: 8321
+        val pin = call.getString("pin") ?: ""
+        val name = call.getString("name") ?: "AirCast phone"
+        com.aircast.receiver.sender.ScreenCastService.start(appContext(), data, host, port, pin, name)
+        call.resolve(JSObject().put("casting", true))
+    }
+
+    @PluginMethod
+    fun stopScreenCast(call: PluginCall) {
+        com.aircast.receiver.sender.ScreenCastService.stop(appContext())
+        call.resolve(JSObject().put("casting", false))
+    }
+
     // ---- permissions & misc -------------------------------------------------
 
     @PluginMethod

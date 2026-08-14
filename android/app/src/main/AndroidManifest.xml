@@ -114,6 +114,13 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <!-- Native screen-cast SENDER: streams this device to another AirCast receiver. -->
+        <service
+            android:name=".sender.ScreenCastService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
         <!-- Reverse control: injects taps/swipes when a device you cast to sends them
              back. User-enabled in Accessibility settings; off by default. -->
         <service
