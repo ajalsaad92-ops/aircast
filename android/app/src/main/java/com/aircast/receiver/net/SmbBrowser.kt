@@ -26,7 +26,7 @@ object SmbBrowser {
 
     /** Browse a configured server. `path` is a slash-path relative to the share root. */
     fun browse(index: Int, path: String, filter: String): String {
-        val prefs = PrefsHolder.prefs
+        val prefs = PrefsHolder.prefs ?: throw IllegalStateException("SmbBrowser not initialised")
         val servers = JSONArray(prefs.smbServers)
         val entry = servers.optJSONObject(index) ?: throw IllegalArgumentException("server $index missing")
 
@@ -74,7 +74,7 @@ object SmbBrowser {
     }
 
     fun resolveStreamUrl(index: Int, path: String): String {
-        val prefs = PrefsHolder.prefs
+        val prefs = PrefsHolder.prefs ?: throw IllegalStateException("SmbBrowser not initialised")
         val servers = JSONArray(prefs.smbServers)
         val entry = servers.optJSONObject(index) ?: throw IllegalArgumentException("server $index missing")
         return "/smb/$index/${path.trim('/')}"
@@ -99,7 +99,10 @@ object SmbBrowser {
     }
 }
 
-/** Lazy holder so Prefs can be assigned from the service at start. */
+/** Lazy holder so Prefs can be assigned from the service at start.
+ * The initial value must be a real object (never a throw), because a throwing
+ * initializer turns every read before the service runs into an
+ * ExceptionInInitializerError that kills the whole process. */
 object PrefsHolder {
-    var prefs: Prefs = throw IllegalStateException("SmbBrowser not initialised")
+    var prefs: Prefs? = null
 }

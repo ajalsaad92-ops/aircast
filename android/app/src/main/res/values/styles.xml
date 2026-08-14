@@ -16,7 +16,11 @@
     </style>
 
 
-    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+    <!-- Launch theme for the splash screen: must descend from an AppCompat theme
+         (AppCompatDelegate.createSubDecor crashes otherwise on Android 16 when the
+         splash screen sets its keep-on-screen condition), so the splash drawable is
+         applied as the window background instead of through Theme.SplashScreen. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
         <item name="android:background">@drawable/splash</item>
     </style>
 

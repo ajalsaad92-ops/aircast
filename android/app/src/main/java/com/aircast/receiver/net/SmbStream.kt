@@ -19,7 +19,7 @@ object SmbStream {
         val remote = parts[1]
 
         return try {
-            val prefs = PrefsHolder.prefs
+            val prefs = PrefsHolder.prefs ?: return HttpResponse.notFound()
             val entry = JSONArray(prefs.smbServers).optJSONObject(index)
                 ?: return HttpResponse.notFound()
             val host = entry.optString("host").trim()
