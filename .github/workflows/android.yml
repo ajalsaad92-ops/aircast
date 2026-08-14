@@ -21,6 +21,8 @@ jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +63,21 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Publish the debug APK to a rolling pre-release so it has a stable,
+      # one-click download link on every push to main (no login / unzip needed).
+      - name: Publish rolling debug release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-latest
+          name: AirCast — latest debug APK
+          body: |
+            Automatic debug build of the latest commit on `main`.
+            Commit: ${{ github.sha }}
+          prerelease: true
+          fail_on_unmatched_files: false
+          files: android/app/build/outputs/apk/debug/*.apk
 
   release:
     name: Signed release
