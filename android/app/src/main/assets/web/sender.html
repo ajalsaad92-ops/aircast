@@ -240,6 +240,24 @@
     pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
     stream.getTracks().forEach(function (t) { pc.addTrack(t, stream); });
 
+    // Aim for the best quality the link allows, then let WebRTC scale resolution
+    // and frame-rate down automatically on weaker devices/networks ("auto per device").
+    try {
+      var vtrack = stream.getVideoTracks()[0];
+      if (vtrack) { try { vtrack.contentHint = 'detail'; } catch (e) {} }
+      var vsender = pc.getSenders().filter(function (s) { return s.track && s.track.kind === 'video'; })[0];
+      if (vsender) {
+        var params = vsender.getParameters();
+        if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+        var kbps = height >= 2160 ? 20000 : height >= 1440 ? 14000 : height >= 1080 ? 9000
+                 : height >= 720 ? 4500 : height > 0 ? 2500 : 16000;
+        params.encodings[0].maxBitrate = kbps * 1000;
+        params.encodings[0].maxFramerate = fps;
+        params.degradationPreference = 'balanced';
+        await vsender.setParameters(params);
+      }
+    } catch (e) { /* older browsers still auto-adapt */ }
+
     pc.onicecandidate = function (e) {
       if (!e.candidate) return;
       post('/mirror/ice?id=' + PEER_ID, { candidate: e.candidate.toJSON() }).catch(function () {});

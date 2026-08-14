@@ -47,9 +47,13 @@ class Prefs private constructor(context: Context) {
         get() = sp.getString(K_LANG, "ar") ?: "ar"
         set(v) = sp.edit().putString(K_LANG, v).apply()
 
-    /** Preferred cap for the mirroring track: 720 / 1080 / 2160 (0 = source). */
+    /**
+     * Preferred cap for the mirroring track: 720 / 1080 / 1440 / 2160 (0 = Auto).
+     * Defaults to Auto: capture at the source's native resolution and let WebRTC
+     * scale down automatically for slower devices/links.
+     */
     var mirrorQuality: Int
-        get() = sp.getInt(K_QUALITY, 1080)
+        get() = sp.getInt(K_QUALITY, 0)
         set(v) = sp.edit().putInt(K_QUALITY, v).apply()
 
     var httpPort: Int
@@ -102,7 +106,7 @@ class Prefs private constructor(context: Context) {
         if (o.has("keepScreenOn")) keepScreenOn = o.optBoolean("keepScreenOn", true)
         if (o.has("recordAudio")) recordAudio = o.optBoolean("recordAudio", true)
         if (o.has("language")) language = o.optString("language", "ar")
-        if (o.has("mirrorQuality")) mirrorQuality = o.optInt("mirrorQuality", 1080)
+        if (o.has("mirrorQuality")) mirrorQuality = o.optInt("mirrorQuality", 0)
     }
 
     companion object {
