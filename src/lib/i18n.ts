@@ -15,6 +15,9 @@ const dict = {
     'nav.activity': 'النشاط',
     'nav.guide': 'الدليل',
     'nav.settings': 'الإعدادات',
+    'nav.main': 'الرئيسية',
+    'nav.advanced': 'متقدّم',
+    'stop.cast': 'إيقاف البث',
 
     'state.online': 'يعمل',
     'state.offline': 'متوقف',
@@ -144,6 +147,9 @@ const dict = {
     'nav.activity': 'Activity',
     'nav.guide': 'Guide',
     'nav.settings': 'Settings',
+    'nav.main': 'Main',
+    'nav.advanced': 'Advanced',
+    'stop.cast': 'Stop casting',
 
     'state.online': 'Online',
     'state.offline': 'Offline',

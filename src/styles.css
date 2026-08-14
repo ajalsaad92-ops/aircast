@@ -228,6 +228,72 @@ button {
   border-color: var(--seam-lit);
 }
 
+.topbar__actions {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar__actions .langtoggle {
+  margin-inline-start: 0;
+}
+
+/* Discreet stop control, top-right — faint until hovered/focused. */
+.stopbtn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--ink-3);
+  border: 1px solid var(--seam);
+  background: var(--chassis);
+  opacity: 0.45;
+  transition: opacity 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.stopbtn:hover,
+.stopbtn:focus-visible {
+  opacity: 1;
+  color: var(--danger, #f87171);
+  border-color: var(--seam-lit);
+}
+
+.stopbtn:disabled {
+  opacity: 0.2;
+}
+
+.stopbtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Segmented sub-navigation used on the Advanced page. */
+.subnav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: var(--chassis);
+  border: 1px solid var(--seam);
+  border-radius: 999px;
+}
+
+.subnav__item {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink-3);
+  transition: color 0.18s var(--ease), background 0.18s var(--ease);
+}
+
+.subnav__item[data-active='true'] {
+  color: var(--ink-1, #fff);
+  background: var(--chassis-2);
+}
+
 .scroll {
   flex: 1;
   overflow-y: auto;

@@ -1,39 +1,33 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { ReceiverProvider, useReceiver } from './hooks/useReceiver';
-import { HomePage } from './pages/HomePage';
-import { MirrorPage } from './pages/MirrorPage';
-import { ActivityPage } from './pages/ActivityPage';
-import { GuidePage } from './pages/GuidePage';
-import { SettingsPage } from './pages/SettingsPage';
-import { BookIcon, CastIcon, PulseIcon, ScreenIcon, SlidersIcon } from './components/Icons';
+import { MainPage } from './pages/MainPage';
+import { AdvancedPage } from './pages/AdvancedPage';
+import { CastIcon, PowerIcon, SlidersIcon } from './components/Icons';
 import type { MessageKey } from './lib/i18n';
 
-type TabId = 'home' | 'mirror' | 'activity' | 'guide' | 'settings';
+type TabId = 'main' | 'advanced';
 
 const TABS: Array<{
   id: TabId;
   label: MessageKey;
   Icon: (props: { className?: string }) => ReactElement;
 }> = [
-  { id: 'home', label: 'nav.home', Icon: CastIcon },
-  { id: 'mirror', label: 'nav.mirror', Icon: ScreenIcon },
-  { id: 'activity', label: 'nav.activity', Icon: PulseIcon },
-  { id: 'guide', label: 'nav.guide', Icon: BookIcon },
-  { id: 'settings', label: 'nav.settings', Icon: SlidersIcon },
+  { id: 'main', label: 'nav.main', Icon: CastIcon },
+  { id: 'advanced', label: 'nav.advanced', Icon: SlidersIcon },
 ];
 
 function Shell() {
-  const { status, t, toast, ready } = useReceiver();
-  const [tab, setTab] = useState<TabId>('home');
+  const { status, t, toast, ready, busy, togglePower } = useReceiver();
+  const [tab, setTab] = useState<TabId>('main');
 
-  // Android back button: step back to Home before letting the OS close the app.
+  // Android back button: step back to Main before letting the OS close the app.
   useEffect(() => {
     let handle: { remove: () => Promise<void> } | undefined;
     void CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       void canGoBack;
       setTab((current) => {
-        if (current !== 'home') return 'home';
+        if (current !== 'main') return 'main';
         void CapacitorApp.exitApp();
         return current;
       });
@@ -64,24 +58,27 @@ function Shell() {
                 </div>
               </div>
             </div>
-            <LanguageToggle />
+            <div className="topbar__actions">
+              {/* Discreet stop control, top-right: halts all receiving/casting. */}
+              {running && (
+                <button
+                  type="button"
+                  className="stopbtn"
+                  disabled={busy}
+                  aria-label={t('stop.cast')}
+                  title={t('stop.cast')}
+                  onClick={() => void togglePower()}
+                >
+                  <PowerIcon />
+                </button>
+              )}
+              <LanguageToggle />
+            </div>
           </div>
           <div className="topbar__scale" aria-hidden="true" />
         </header>
 
-        <main className="scroll">
-          {!ready ? null : tab === 'home' ? (
-            <HomePage />
-          ) : tab === 'mirror' ? (
-            <MirrorPage />
-          ) : tab === 'activity' ? (
-            <ActivityPage />
-          ) : tab === 'guide' ? (
-            <GuidePage />
-          ) : (
-            <SettingsPage />
-          )}
-        </main>
+        <main className="scroll">{!ready ? null : tab === 'main' ? <MainPage /> : <AdvancedPage />}</main>
       </div>
 
       <nav className="nav">
@@ -95,9 +92,7 @@ function Shell() {
           >
             <Icon />
             <span>{t(label)}</span>
-            {id === 'activity' && connections > 0 && (
-              <span className="nav__badge">{connections}</span>
-            )}
+            {id === 'advanced' && connections > 0 && <span className="nav__badge">{connections}</span>}
           </button>
         ))}
       </nav>
@@ -110,11 +105,7 @@ function Shell() {
 function LanguageToggle() {
   const { lang, setLang } = useReceiver();
   return (
-    <button
-      type="button"
-      className="langtoggle"
-      onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-    >
+    <button type="button" className="langtoggle" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
       {lang === 'ar' ? 'EN' : 'ع'}
     </button>
   );
