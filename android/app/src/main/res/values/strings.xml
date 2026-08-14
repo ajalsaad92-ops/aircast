@@ -5,6 +5,8 @@
     <string name="package_name">com.aircast.receiver</string>
     <string name="custom_url_scheme">com.aircast.receiver</string>
 
+    <string name="accessibility_desc">Lets a device you cast to control this phone by sending taps and swipes back. Only used for reverse control; never required for normal casting.</string>
+
     <string name="notification_channel_name">Receiver</string>
     <string name="notification_channel_desc">Keeps AirCast discoverable on your network</string>
     <string name="notification_ready">Ready at %1$s</string>
