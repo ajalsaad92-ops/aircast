@@ -10,7 +10,7 @@ import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.SSLServerSocketFactory
 
 /**
  * Device authentication for Google Cast, using the replay technique discovered in Shanocast.
@@ -145,7 +145,7 @@ AAAAAAAAAAAAAAAA
     // For current date we would need signature at index 547, but we use the example one for demo
     // In private build, replace SIGNATURE_B64 with signature for today from shanocast table
 
-    fun createTlsSocketFactory(): SSLSocketFactory? {
+    fun createTlsSocketFactory(): SSLServerSocketFactory? {
         return try {
             // Ensure BC provider
             try {
@@ -161,7 +161,7 @@ AAAAAAAAAAAAAAAA
             kmf.init(keyStore, CharArray(0))
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(kmf.keyManagers, null, java.security.SecureRandom())
-            ctx.socketFactory
+            ctx.serverSocketFactory
         } catch (e: Exception) {
             Logger.e("cast-auth", "failed to create TLS factory with embedded cert (will fallback): ${e.message}")
             null

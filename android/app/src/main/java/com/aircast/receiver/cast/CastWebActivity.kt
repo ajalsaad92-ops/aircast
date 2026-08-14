@@ -134,13 +134,13 @@ class CastWebActivity : Activity() {
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     super.onPageStarted(view, url, favicon)
-                    progress.visibility = View.VISIBLE
+                    this@CastWebActivity.progress.visibility = View.VISIBLE
                     Logger.i("castweb", "page started: ${url?.take(80)}")
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    progress.visibility = View.GONE
+                    this@CastWebActivity.progress.visibility = View.GONE
                     Logger.i("castweb", "loaded ${url?.take(80)}")
                     // Inject JS to detect video start and hide overlay, plus console forwarding
                     injectDetectionScript()
@@ -150,7 +150,7 @@ class CastWebActivity : Activity() {
                     super.onReceivedError(view, request, error)
                     if (request?.isForMainFrame == true) {
                         Logger.w("castweb", "page error: ${error?.description} at ${request.url}")
-                        progress.visibility = View.GONE
+                        this@CastWebActivity.progress.visibility = View.GONE
                         // Show overlay again with error
                         showOverlayWithError("فشل تحميل الصفحة. تأكد من الانترنت ثم اضغط رجوع.\nPage failed to load. Check internet and press back to retry.")
                     }
@@ -189,7 +189,7 @@ class CastWebActivity : Activity() {
                         customViewContainer.addView(it, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                         customViewContainer.visibility = View.VISIBLE
                         rootLayout.visibility = View.INVISIBLE
-                        overlay.visibility = View.GONE
+                        this@CastWebActivity.overlay.visibility = View.GONE
                     }
                     goImmersive()
                 }
@@ -216,9 +216,9 @@ class CastWebActivity : Activity() {
 
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     if (newProgress < 100) {
-                        if (progress.visibility != View.VISIBLE) progress.visibility = View.VISIBLE
+                        if (this@CastWebActivity.progress.visibility != View.VISIBLE) this@CastWebActivity.progress.visibility = View.VISIBLE
                     } else {
-                        progress.visibility = View.GONE
+                        this@CastWebActivity.progress.visibility = View.GONE
                     }
                 }
             }
@@ -251,7 +251,7 @@ class CastWebActivity : Activity() {
                 gravity = Gravity.CENTER
             })
             // Overlay at bottom or center?
-            addView(overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            addView(this@CastWebActivity.overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.BOTTOM
             })
         }
@@ -399,7 +399,7 @@ class CastWebActivity : Activity() {
         // If custom fullscreen view is showing, hide it first
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (customView != null) {
-                webChromeClient?.onHideCustomView()
+                webView.webChromeClient?.onHideCustomView()
                 return true
             }
             if (webView.canGoBack()) {

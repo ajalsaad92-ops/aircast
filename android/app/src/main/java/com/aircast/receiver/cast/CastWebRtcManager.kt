@@ -151,15 +151,15 @@ object CastWebRtcManager {
 
                 // Set remote description (OFFER from Quest)
                 val remoteDesc = SessionDescription(SessionDescription.Type.OFFER, offerSdp)
-                peerConnection?.setRemoteDescription(object : SimpleSdpObserver {
+                peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
                     override fun onSetSuccess() {
                         Logger.i("cast-webrtc", "remote OFFER set, creating ANSWER")
                         // Create answer
-                        peerConnection?.createAnswer(object : SimpleSdpObserver {
+                        peerConnection?.createAnswer(object : SimpleSdpObserver() {
                             override fun onCreateSuccess(answer: SessionDescription?) {
                                 answer?.let {
                                     Logger.i("cast-webrtc", "ANSWER created: ${it.description.take(120)}")
-                                    peerConnection?.setLocalDescription(object : SimpleSdpObserver {
+                                    peerConnection?.setLocalDescription(object : SimpleSdpObserver() {
                                         override fun onSetSuccess() {
                                             Logger.i("cast-webrtc", "local ANSWER set, sending to Quest")
                                             sendAnswer?.invoke(it.description)
