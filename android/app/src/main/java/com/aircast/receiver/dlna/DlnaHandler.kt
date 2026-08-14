@@ -86,6 +86,14 @@ class DlnaHandler(private val context: Context) {
         }
     }
 
+    /** Pulls a helper `subtitle=` parameter off a media URL when present. */
+    private fun extractSubtitleParam(uri: String): String {
+        return try {
+            val q = uri.substringAfter('?', "").split('&').firstOrNull { it.startsWith("subtitle=") }
+            java.net.URLDecoder.decode(q?.substringAfter("subtitle=").orEmpty(), "UTF-8")
+        } catch (_: Exception) { "" }
+    }
+
     private fun avTransport(action: String, body: String, req: HttpRequest): HttpResponse {
         val svc = Upnp.SVC_AVTRANSPORT
         when (action) {
@@ -95,6 +103,9 @@ class DlnaHandler(private val context: Context) {
                 if (uri.isBlank()) return HttpResponse.xml(Soap.fault(402, "Invalid Args"), 500)
                 val didl = Soap.parseDidl(meta)
                 Playback.metadata = meta
+                // DLNA senders can't natively carry subtitles, so a helper URL parameter
+                // (`?subtitle=/subtitle/token.vtt`) is accepted on the media URI itself.
+                val subtitleUrl = extractSubtitleParam(uri)
                 Playback.open(
                     context,
                     Playback.Request(
@@ -107,6 +118,7 @@ class DlnaHandler(private val context: Context) {
                         source = "dlna",
                         senderName = req.header("user-agent")?.take(40).orEmpty(),
                         senderIp = req.remoteIp,
+                        subtitleUrl = subtitleUrl,
                     ),
                 )
                 return ok(action, svc)

@@ -109,6 +109,12 @@ export interface Settings {
   keepPlaying: boolean;
   /** Auto-lower mirror quality when frame stalls are detected. */
   smartVideoQuality: boolean;
+  /** Network media browser: JSON array of `{name, host, share, user, pass, base}`. */
+  smbEnabled: boolean;
+  smbServers: string;
+  /** Google Cast custom-receiver app id (registered in the Cast developer console). */
+  castAppId: string;
+  castEnabled: boolean;
 }
 
 export interface PendingConnection {
@@ -237,6 +243,32 @@ export interface AirCastPlugin {
     listener: (line: LogLine) => void,
   ): Promise<PluginListenerHandle>;
 
+  /** Browse a configured SMB server. `path` is share-relative, `filter` narrows to media. */
+  browseSmb(options: { server: number; path?: string; filter?: string }): Promise<{
+    server: string;
+    path: string;
+    title: string;
+    items: { name: string; dir: boolean; size?: number }[];
+  }>;
+  /** Upload subtitle text (srt/ass/vtt) and receive a local WebVTT URL. */
+  uploadSubtitle(options: { text: string; format: 'srt' | 'vtt' | 'ass' }): Promise<{
+    token: string;
+    url: string;
+    cues: number;
+  }>;
+  /** Google Cast session state when a custom receiver app id is configured. */
+  castStatus(): Promise<{ appId: string; ready: boolean }>;
+  /**
+   * Play a media URL on the device itself (e.g. an SMB stream served at
+   * `/smb/…` or a remote file) — the same pipeline a DLNA sender uses,
+   * including an optional WebVTT subtitle URL.
+   */
+  playMedia(options: {
+    url: string;
+    title?: string;
+    subtitleUrl?: string;
+  }): Promise<{ ok: boolean }>;
+
   removeAllListeners(): Promise<void>;
 }
 
@@ -268,6 +300,11 @@ const webFallback: AirCastPlugin = (() => {
     screenResolution: 'native',
     keepPlaying: false,
     smartVideoQuality: false,
+    smbEnabled: true,
+    smbServers:
+      '[{"name":"NAS","host":"192.168.1.10","share":"Movies","user":"","pass":"","base":"/"}]',
+    castAppId: '',
+    castEnabled: true,
   };
   let running = true;
 
@@ -372,6 +409,23 @@ const webFallback: AirCastPlugin = (() => {
       window.open(url ?? 'https://www.oculus.com/casting', '_blank');
       return { opened: true };
     },
+    browseSmb: async () => ({
+      server: 'NAS (dev)',
+      path: '',
+      title: 'Movies',
+      items: [
+        { name: 'Big Buck Bunny.mp4', dir: false, size: 276445467 },
+        { name: 'Series', dir: true },
+        { name: 'Sintel.mkv', dir: false, size: 129274972 },
+      ],
+    }),
+    uploadSubtitle: async ({ text }) => ({
+      token: 'devtoken',
+      url: `/subtitle/devtoken.vtt`,
+      cues: Math.max(1, text.split('\n').length / 4),
+    }),
+    castStatus: async () => ({ appId: '', ready: false }),
+    playMedia: async () => ({ ok: true }),
     addListener: handle,
     removeAllListeners: noop,
   } as AirCastPlugin;

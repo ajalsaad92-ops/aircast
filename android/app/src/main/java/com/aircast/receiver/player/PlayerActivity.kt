@@ -137,6 +137,7 @@ class PlayerActivity : Activity(), Playback.Controller {
                 startPositionMs = intent.getLongExtra(EXTRA_POSITION, 0L),
                 source = intent.getStringExtra(EXTRA_SOURCE).orEmpty(),
                 senderName = intent.getStringExtra(EXTRA_SENDER).orEmpty(),
+                subtitleUrl = intent.getStringExtra(EXTRA_SUBTITLE).orEmpty(),
             ),
         )
     }
@@ -204,7 +205,7 @@ class PlayerActivity : Activity(), Playback.Controller {
                 main.post(progressTick)
             }
 
-        val item = MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setUri(request.url)
             .setMediaMetadata(
                 MediaMetadata.Builder()
@@ -213,7 +214,21 @@ class PlayerActivity : Activity(), Playback.Controller {
                     .setAlbumTitle(request.album.ifBlank { null })
                     .build(),
             )
-            .build()
+
+        // `subtitleUrl`: custom subtitles — uploaded via POST /subtitle or passed by
+        // a DLNA client through the `?subtitle=` query parameter on the media URL.
+        if (request.subtitleUrl.isNotBlank()) {
+            builder.setSubtitleConfigurations(
+                listOf(
+                    MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(request.subtitleUrl))
+                        .setMimeType("text/vtt")
+                        .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                        .build(),
+                ),
+            )
+        }
+
+        val item = builder.build()
 
         exo.setMediaItem(item)
         exo.volume = if (Playback.muted) 0f else Playback.volume / 100f
@@ -376,5 +391,6 @@ class PlayerActivity : Activity(), Playback.Controller {
         const val EXTRA_POSITION = "position"
         const val EXTRA_SOURCE = "source"
         const val EXTRA_SENDER = "sender"
+        const val EXTRA_SUBTITLE = "subtitle"
     }
 }

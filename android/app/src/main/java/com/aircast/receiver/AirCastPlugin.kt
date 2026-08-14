@@ -421,6 +421,94 @@ class AirCastPlugin : Plugin() {
         }
     }
 
+    // ---- network media browser & subtitles ---------------------------------
+
+    @PluginMethod
+    fun browseSmb(call: PluginCall) {
+        val prefs = com.aircast.receiver.core.Prefs.get(appContext())
+        if (!prefs.smbEnabled) return call.reject("SMB browser is disabled")
+        try {
+            com.aircast.receiver.net.PrefsHolder.prefs = prefs
+            val index = call.getInt("server") ?: 0
+            val path = call.getString("path").orEmpty()
+            val filter = call.getString("filter").orEmpty()
+            val json = com.aircast.receiver.net.SmbBrowser.browse(index, path, filter)
+            call.resolve(JSObject(json))
+        } catch (e: Exception) {
+            call.reject("Browse failed: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun uploadSubtitle(call: PluginCall) {
+        val text = call.getString("text").orEmpty()
+        val format = call.getString("format").orEmpty().ifBlank { "srt" }
+        if (text.isBlank()) return call.reject("text is required")
+        try {
+            val req = com.aircast.receiver.core.HttpRequest(
+                method = "POST",
+                rawTarget = "/subtitle",
+                path = "/subtitle",
+                query = emptyMap(),
+                headers = emptyMap(),
+                body = org.json.JSONObject()
+                    .put("text", text)
+                    .put("format", format)
+                    .toString()
+                    .toByteArray(Charsets.UTF_8),
+                remoteIp = "127.0.0.1",
+                localIp = com.aircast.receiver.core.Net.primaryIp(),
+                localPort = com.aircast.receiver.core.Prefs.get(appContext()).httpPort,
+                secure = false,
+            )
+            val res = com.aircast.receiver.player.Subtitles.handle(req)
+            if (res == null || res.status !in 200..299) {
+                return call.reject("Subtitle upload failed")
+            }
+            call.resolve(JSObject(String(res.body, Charsets.UTF_8)))
+        } catch (e: Exception) {
+            call.reject("Subtitle upload failed: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun castStatus(call: PluginCall) {
+        val prefs = com.aircast.receiver.core.Prefs.get(appContext())
+        val ready = prefs.castEnabled && prefs.castAppId.isNotBlank()
+        call.resolve(
+            JSObject()
+                .put("appId", prefs.castAppId)
+                .put("ready", ready),
+        )
+    }
+
+    /**
+     * Play a local media URL (e.g. an SMB stream served at `/smb/…` or an uploaded
+     * subtitle track) directly in the player, the same way a DLNA sender would.
+     */
+    @PluginMethod
+    fun playMedia(call: PluginCall) {
+        val url = call.getString("url").orEmpty()
+        if (url.isBlank()) return call.reject("url is required")
+        try {
+            com.aircast.receiver.player.Playback.open(
+                appContext(),
+                com.aircast.receiver.player.Playback.Request(
+                    url = url,
+                    kind = com.aircast.receiver.dlna.Soap.guessKind("", url),
+                    title = call.getString("title").orEmpty(),
+                    source = "local",
+                    senderName = "AirCast",
+                    senderIp = "127.0.0.1",
+                    subtitleUrl = call.getString("subtitleUrl").orEmpty(),
+                ),
+            )
+            call.resolve(JSObject().put("ok", true))
+        } catch (e: Exception) {
+            call.reject("Cannot start playback: ${e.message}")
+        }
+    }
+
     companion object {
         const val PERM_NOTIFICATIONS = "notifications"
         const val PERM_MICROPHONE = "microphone"

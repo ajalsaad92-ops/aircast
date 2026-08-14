@@ -119,6 +119,7 @@ class AirPlayHandler(private val context: Context) {
                 source = "airplay",
                 senderName = senderName(req),
                 senderIp = req.remoteIp,
+                subtitleUrl = parsed.third.orEmpty(),
             ),
         )
         return HttpResponse.empty(200)
@@ -223,9 +224,10 @@ class AirPlayHandler(private val context: Context) {
     // ---- body parsing -------------------------------------------------------
 
     /** `Content-Location: http://…\nStart-Position: 0.0\n` */
-    private fun parseTextParameters(body: String): Pair<String?, Double> {
+    private fun parseTextParameters(body: String): Triple<String?, Double, String?> {
         var url: String? = null
         var start = 0.0
+        var subtitle: String? = null
         for (line in body.split('\n')) {
             val i = line.indexOf(':')
             if (i <= 0) continue
@@ -234,9 +236,12 @@ class AirPlayHandler(private val context: Context) {
             when (key) {
                 "content-location" -> url = value
                 "start-position" -> start = value.toDoubleOrNull() ?: 0.0
+                // AirPin-style helper: senders that cannot attach subtitles directly
+                // can pass `subtitle: /subtitle/<token>.vtt` alongside the URL.
+                "subtitle" -> subtitle = value
             }
         }
-        return url to start
+        return Triple(url, start, subtitle)
     }
 
     /**
@@ -245,13 +250,15 @@ class AirPlayHandler(private val context: Context) {
      * key name and the value are stored as plain ASCII runs, which makes this reliable
      * for `/play` while staying ~20 lines instead of ~400.
      */
-    private fun parseBinaryPlistLoosely(latin1: String): Pair<String?, Double> {
+    private fun parseBinaryPlistLoosely(latin1: String): Triple<String?, Double, String?> {
         val url = Regex("https?://[^\\u0000-\\u0020\"'<>\\\\^`{|}]+")
             .find(latin1)?.value
             ?.trimEnd('.', ',', ';')
         val start = Regex("Start-Position:?\\s*([0-9.]+)", RegexOption.IGNORE_CASE)
             .find(latin1)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
-        return url to start
+        val subtitle = Regex("Subtitle:?\\s*(/\\S+)", RegexOption.IGNORE_CASE)
+            .find(latin1)?.groupValues?.get(1)
+        return Triple(url, start, subtitle)
     }
 
     // ---- plist helpers ------------------------------------------------------

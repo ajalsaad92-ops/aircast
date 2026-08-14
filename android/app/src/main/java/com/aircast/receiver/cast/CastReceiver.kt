@@ -419,7 +419,7 @@ class CastReceiver(private val context: Context) {
         if (session != null) {
             applications.put(
                 JSONObject()
-                    .put("appId", currentAppId.ifBlank { "CC1AD845" })
+                    .put("appId", currentAppId.ifBlank { if (prefs.castAppId.isNotBlank()) prefs.castAppId else "CC1AD845" })
                     .put("displayName", prefs.deviceName)
                     .put("isIdleScreen", false)
                     .put("launchedFromCloud", false)

@@ -99,6 +99,27 @@ class Prefs private constructor(context: Context) {
         get() = sp.getBoolean(K_SMART_QUALITY, false)
         set(v) = sp.edit().putBoolean(K_SMART_QUALITY, v).apply()
 
+    /**
+     * SMB network media browser: `enabled` toggles the /browse endpoint and
+     * `servers` is a JSON array of `{name, host, share, user, pass}` entries.
+     */
+    var smbEnabled: Boolean
+        get() = sp.getBoolean(K_SMB, false)
+        set(v) = sp.edit().putBoolean(K_SMB, v).apply()
+
+    var smbServers: String
+        get() = sp.getString(K_SMB_SERVERS, "[]") ?: "[]"
+        set(v) = sp.edit().putString(K_SMB_SERVERS, v).apply()
+
+    /** Google Cast receiver app id registered in the Cast developer console. */
+    var castAppId: String
+        get() = sp.getString(K_CAST_APP_ID, "") ?: ""
+        set(v) = sp.edit().putString(K_CAST_APP_ID, v.trim()).apply()
+
+    var castEnabled: Boolean
+        get() = sp.getBoolean(K_CAST_ON, true)
+        set(v) = sp.edit().putBoolean(K_CAST_ON, v).apply()
+
     var autoStart: Boolean
         get() = sp.getBoolean(K_AUTOSTART, true)
         set(v) = sp.edit().putBoolean(K_AUTOSTART, v).apply()
@@ -172,6 +193,10 @@ class Prefs private constructor(context: Context) {
         .put("screenResolution", screenResolution)
         .put("keepPlaying", keepPlaying)
         .put("smartVideoQuality", smartVideoQuality)
+        .put("smbEnabled", smbEnabled)
+        .put("smbServers", smbServers)
+        .put("castAppId", castAppId)
+        .put("castEnabled", castEnabled)
 
     fun applyJson(o: JSONObject) {
         if (o.has("deviceName")) deviceName = o.optString("deviceName")
@@ -192,6 +217,10 @@ class Prefs private constructor(context: Context) {
         if (o.has("screenResolution")) screenResolution = o.optString("screenResolution", "native")
         if (o.has("keepPlaying")) keepPlaying = o.optBoolean("keepPlaying", false)
         if (o.has("smartVideoQuality")) smartVideoQuality = o.optBoolean("smartVideoQuality", false)
+        if (o.has("smbEnabled")) smbEnabled = o.optBoolean("smbEnabled", false)
+        if (o.has("smbServers")) smbServers = o.optString("smbServers", "[]")
+        if (o.has("castAppId")) castAppId = o.optString("castAppId", "")
+        if (o.has("castEnabled")) castEnabled = o.optBoolean("castEnabled", true)
     }
 
     companion object {
@@ -221,6 +250,10 @@ class Prefs private constructor(context: Context) {
         private const val K_RESOLUTION = "screen_resolution"
         private const val K_KEEP_PLAYING = "keep_playing"
         private const val K_SMART_QUALITY = "smart_quality"
+        private const val K_SMB = "smb_enabled"
+        private const val K_SMB_SERVERS = "smb_servers"
+        private const val K_CAST_APP_ID = "cast_app_id"
+        private const val K_CAST_ON = "cast_on"
         private const val K_DEVICE_ID = "device_id_hex"
         private const val K_UUID = "uuid"
         private const val K_BOOT_ID = "boot_id"

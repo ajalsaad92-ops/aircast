@@ -38,6 +38,8 @@ object Playback {
         val senderName: String = "",
         val senderIp: String = "",
         val mimeHint: String = "",
+        /** Optional WebVTT subtitle URL (e.g. /subtitle/$token.vtt or a remote file). */
+        val subtitleUrl: String = "",
     )
 
     /** Implemented by [PlayerActivity] while it is on screen. */
@@ -69,6 +71,7 @@ object Playback {
     @Volatile var source: String = ""
     @Volatile var senderName: String = ""
     @Volatile var senderIp: String = ""
+    @Volatile var subtitleUrl: String = ""
     @Volatile var volume: Int = 60
     @Volatile var muted: Boolean = false
 
@@ -113,6 +116,7 @@ object Playback {
         source = request.source
         senderName = request.senderName
         senderIp = request.senderIp
+        subtitleUrl = request.subtitleUrl
         lastKnownPosition = request.startPositionMs
         lastKnownDuration = 0
         setState(State.TRANSITIONING, notify = false)
@@ -134,6 +138,7 @@ object Playback {
             putExtra(PlayerActivity.EXTRA_POSITION, request.startPositionMs)
             putExtra(PlayerActivity.EXTRA_SOURCE, request.source)
             putExtra(PlayerActivity.EXTRA_SENDER, request.senderName)
+            putExtra(PlayerActivity.EXTRA_SUBTITLE, request.subtitleUrl)
         }
         context.startActivity(intent)
     }
@@ -148,6 +153,7 @@ object Playback {
         source = ""
         senderName = ""
         senderIp = ""
+        subtitleUrl = ""
         lastKnownPosition = 0
         lastKnownDuration = 0
         setState(State.NO_MEDIA)
@@ -165,6 +171,7 @@ object Playback {
         .put("source", source)
         .put("senderName", senderName)
         .put("senderIp", senderIp)
+        .put("subtitleUrl", subtitleUrl)
         .put("positionMs", positionMs())
         .put("durationMs", durationMs())
         .put("volume", volume)

@@ -84,6 +84,7 @@ repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
+    mavenCentral()
 }
 
 dependencies {
@@ -111,6 +112,9 @@ dependencies {
 
     // --- AirCast: mDNS responder for a stable aircast.local hostname ---
     implementation "org.jmdns:jmdns:3.5.9"
+
+    // --- AirCast: SMB2/3 read-only media browser (local network share browser) ---
+    implementation "eu.agno3.jcifs:jcifs-ng:2.1.10"
 
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

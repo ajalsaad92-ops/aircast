@@ -37,6 +37,10 @@ import com.aircast.receiver.mirror.MirrorHandler
 import com.aircast.receiver.mirror.MirrorSignaling
 import com.aircast.receiver.mirror.TlsFactory
 import com.aircast.receiver.player.Playback
+import com.aircast.receiver.player.Subtitles
+import com.aircast.receiver.net.SmbBrowser
+import com.aircast.receiver.net.SmbStream
+import com.aircast.receiver.net.PrefsHolder
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
@@ -56,6 +60,15 @@ class ReceiverService : Service() {
     private lateinit var dlna: DlnaHandler
     private lateinit var airplay: AirPlayHandler
     private lateinit var mirror: MirrorHandler
+
+    /** Wire Prefs into the standalone SMB helpers once at service start. */
+    private fun initNetHelpers() {
+        try {
+            PrefsHolder.prefs = prefs
+        } catch (e: Exception) {
+            Logger.w("service", "net helpers init failed: ${e.message}")
+        }
+    }
 
     private var httpServer: HttpServer? = null
     private var httpsServer: HttpServer? = null
@@ -139,6 +152,7 @@ class ReceiverService : Service() {
         if (isRunning) return
         instance = this
         AccessGate.init(this)
+        initNetHelpers()
         Sessions.prefs = prefs
         prefs.bootId = prefs.bootId + 1
         lastIp = Net.primaryIp()
@@ -298,6 +312,22 @@ class ReceiverService : Service() {
     /** Shared routing table for the plain and TLS listeners. */
     private fun route(req: HttpRequest, secure: Boolean): HttpResponse? {
         mirror.handle(req)?.let { return it }
+        if (prefs.smbEnabled) {
+            SmbStream.handle(req)?.let { return it }
+            if (req.path.startsWith("/browse")) {
+                return try {
+                    val index = req.query["server"]?.toIntOrNull() ?: 0
+                    val path = req.query["path"] ?: ""
+                    val filter = req.query["filter"] ?: ""
+                    HttpResponse.json(SmbBrowser.browse(index, path, filter))
+                } catch (e: Exception) {
+                    Logger.w("smb", "browse failed: ${e.message}")
+                    HttpResponse.json(JSONObject()
+                        .put("error", e.message ?: "browse failed").toString(), 503)
+                }
+            }
+        }
+        Subtitles.handle(req)?.let { return it }
         if (prefs.dlnaEnabled && !secure) dlna.handle(req)?.let { return it }
         if (prefs.airplayEnabled && !secure) airplay.handle(req)?.let { return it }
         return HttpResponse.notFound()

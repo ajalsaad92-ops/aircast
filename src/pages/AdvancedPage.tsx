@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useReceiver } from '../hooks/useReceiver';
-import { Panel, Switch } from '../components/ui';
+import { Panel, Switch, Field } from '../components/ui';
 import { SettingsPage } from './SettingsPage';
 import { ActivityPage } from './ActivityPage';
 import { GuidePage } from './GuidePage';
 import { TroubleshootPage } from './TroubleshootPage';
+import { AirCast } from '../lib/aircast';
 import type { ProtocolKey } from '../lib/aircast';
-
-type Sub = 'protocols' | 'settings' | 'activity' | 'guide' | 'troubleshoot';
+type Sub = 'protocols' | 'settings' | 'activity' | 'guide' | 'troubleshoot' | 'browse';
 
 /** Protocol toggles moved off the main page, plus room for future cast methods. */
 function ProtocolsSection() {
@@ -64,6 +64,7 @@ export function AdvancedPage() {
   const tabs: Array<{ id: Sub; label: string }> = [
     { id: 'protocols', label: t('settings.protocols') },
     { id: 'settings', label: t('nav.settings') },
+    { id: 'browse', label: t('nav.browse') },
     { id: 'activity', label: t('nav.activity') },
     { id: 'guide', label: t('nav.guide') },
     { id: 'troubleshoot', label: t('nav.troubleshoot') },
@@ -89,6 +90,8 @@ export function AdvancedPage() {
         <ProtocolsSection />
       ) : sub === 'settings' ? (
         <SettingsPage />
+      ) : sub === 'browse' ? (
+        <BrowserSection />
       ) : sub === 'activity' ? (
         <ActivityPage />
       ) : sub === 'troubleshoot' ? (
@@ -96,6 +99,196 @@ export function AdvancedPage() {
       ) : (
         <GuidePage />
       )}
+    </>
+  );
+}
+
+type BrowsableItem = { name: string; dir: boolean; size?: number };
+
+/**
+ * On-device network media browser: walks a configured SMB share through the
+ * native layer (`/browse`) and plays anything through the same playback
+ * pipeline a DLNA sender uses (`/smb/…` streamed with byte-range, plus an
+ * optional locally uploaded WebVTT subtitle track).
+ */
+function BrowserSection() {
+  const { settings, busy, t, showToast, status } = useReceiver();
+  const [server, setServer] = useState(0);
+  const [path, setPath] = useState('');
+  const [title, setTitle] = useState('');
+  const [items, setItems] = useState<BrowsableItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [subtitleText, setSubtitleText] = useState('');
+  const [subtitleUrl, setSubtitleUrl] = useState('');
+  const [subtitleCues, setSubtitleCues] = useState(0);
+
+  const base = status ? `${status.ips[0] ?? '127.0.0.1'}:${status.httpPort}` : '';
+
+  const servers: Array<{ name: string }> = (() => {
+    try {
+      return JSON.parse(settings?.smbServers ?? '[]');
+    } catch {
+      return [];
+    }
+  })();
+
+  const browse = useCallback(
+    async (idx: number, nextPath: string) => {
+      if (!settings?.smbEnabled) {
+        setError('');
+        setItems([]);
+        return;
+      }
+      setLoading(true);
+      setError('');
+      try {
+        const res = await AirCast.browseSmb({ server: idx, path: nextPath, filter: 'media' });
+        setServer(idx);
+        setPath(nextPath);
+        setTitle(res.title);
+        setItems(res.items);
+      } catch (e) {
+        setError(`${t('net.error')}: ${e instanceof Error ? e.message : String(e)}`);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [settings?.smbEnabled, t],
+  );
+
+  useEffect(() => {
+    if (!settings?.smbEnabled) return;
+    void browse(server, path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.smbEnabled]);
+
+  const streamUrl = (name: string): string =>
+    `http://${base}/smb/${server}/${encodeURIComponent(path ? `${path}/${name}` : name)}`;
+
+  const play = (name: string) => {
+    void AirCast.playMedia({
+      url: streamUrl(name),
+      title: name,
+      ...(subtitleUrl ? { subtitleUrl } : {}),
+    })
+      .then(() => showToast(t('net.playing')))
+      .catch((e) => showToast(`${t('net.error')}: ${e instanceof Error ? e.message : String(e)}`));
+  };
+
+  const attachSubtitle = async () => {
+    if (!subtitleText.trim()) return;
+    try {
+      const { url, cues } = await AirCast.uploadSubtitle({ text: subtitleText, format: 'srt' });
+      setSubtitleUrl(`http://${base}${url}`);
+      setSubtitleCues(cues);
+      showToast(t('net.subtitleReady'));
+    } catch (e) {
+      showToast(`${t('net.error')}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  if (!settings) return null;
+
+  return (
+    <>
+      <Panel title={t('settings.smb')} index={0}>
+        {!settings.smbEnabled ? (
+          <p className="note note--muted">{t('net.browseDisabled')}</p>
+        ) : servers.length === 0 ? (
+          <p className="note note--muted">{t('net.noServers')}</p>
+        ) : (
+          <>
+            <Field label={t('settings.smbServers')}>
+              <select className="select" value={server} onChange={(e) => void browse(Number(e.target.value), '')}>
+                {servers.map((s, i) => (
+                  <option key={i} value={i}>{s.name}</option>
+                ))}
+              </select>
+            </Field>
+
+            <div className="field__label" style={{ marginTop: 8 }}>{title || `…/${path}`}</div>
+
+            {error && <p className="note note--muted">{error}</p>}
+            {loading ? (
+              <p className="note note--muted">{t('net.loading')}</p>
+            ) : items.length === 0 ? (
+              <p className="note note--muted">{t('net.noItems')}</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                {path && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => {
+                      const up = path.split('/').slice(0, -1).join('/');
+                      void browse(server, up);
+                    }}
+                  >
+                    {t('net.up')}
+                  </button>
+                )}
+                {items.map((item) => (
+                  <div className="strip" key={item.name} data-on={!item.dir}>
+                    <span className="strip__led" />
+                    <div className="strip__text">
+                      <div className="strip__name">{item.name}</div>
+                      <div className="strip__desc">
+                        {item.dir
+                          ? t('net.folder')
+                          : item.size !== undefined
+                            ? `${Math.round((item.size ?? 0) / 1048576)} MB`
+                            : ''}
+                      </div>
+                    </div>
+                    {item.dir ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                        onClick={() => void browse(server, path ? `${path}/${item.name}` : item.name)}
+                      >
+                        {t('net.open')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                        disabled={busy}
+                        onClick={() => play(item.name)}
+                      >
+                        {t('net.play')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="field__label" style={{ marginTop: 18 }}>{t('net.subtitle')}</div>
+            <Field label={t('net.subtitle')} hint={t('net.subtitle.hint')}>
+              <textarea
+                className="input"
+                rows={4}
+                dir="ltr"
+                placeholder="1\n00:00:01,000 --> 00:00:04,000\n…"
+                value={subtitleText}
+                onChange={(e) => setSubtitleText(e.target.value)}
+              />
+            </Field>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn" onClick={attachSubtitle}>{t('net.attach')}</button>
+              {subtitleUrl && (
+                <span className="note note--muted" style={{ alignSelf: 'center' }}>
+                  {t('net.subtitleReady')} — {subtitleCues} {t('net.cues')}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </Panel>
     </>
   );
 }

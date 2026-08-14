@@ -329,6 +329,8 @@ export function SettingsPage() {
         </Field>
       </Panel>
 
+      <NetworkPanel />
+
       <Panel title={t('settings.about')} index={5}>
         {/* One port per cell: three of them on a single line wrap mid-number in the
             narrow column the auto-fit grid produces on a phone. */}
@@ -384,5 +386,152 @@ export function SettingsPage() {
         <p className="note note--muted">{t('settings.notSupported.body')}</p>
       </Panel>
     </>
+  );
+}
+
+/**
+ * Network section: SMB/NAS media browser + Google Cast custom receiver.
+ * Rendered between Display and About so it stays close to the playback settings.
+ */
+function NetworkPanel() {
+  const { settings, busy, t, saveSettings, showToast } = useReceiver();
+  const [serversText, setServersText] = useState('');
+  const [newServer, setNewServer] = useState(false);
+  const [form, setForm] = useState({ name: '', host: '', share: '', user: '', pass: '' });
+
+  if (!settings) return null;
+
+  useEffect(() => {
+    // Pretty-print the JSON list so it is readable and editable.
+    try {
+      const parsed = JSON.parse(settings.smbServers ?? '[]');
+      setServersText(JSON.stringify(parsed, null, 2));
+    } catch {
+      setServersText(settings.smbServers ?? '[]');
+    }
+  }, [settings.smbServers]);
+
+  const commitServers = () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(serversText);
+      if (!Array.isArray(parsed)) throw new Error('not an array');
+    } catch {
+      showToast(t('settings.smbInvalidJson'));
+      return;
+    }
+    const next = JSON.stringify(parsed);
+    if (next === settings.smbServers) return;
+    void saveSettings({ smbServers: next }).then(() => showToast(t('settings.saved')));
+  };
+
+  const addServer = () => {
+    const { name, host, share, user, pass } = form;
+    if (!host.trim() || !share.trim()) {
+      showToast(t('settings.smbInvalidJson'));
+      return;
+    }
+    const entry = { name: name.trim() || host.trim(), host: host.trim(), share: share.trim(), user: user.trim(), pass, base: '/' };
+    let parsed: unknown[] = [];
+    try {
+      parsed = JSON.parse(settings.smbServers ?? '[]');
+      if (!Array.isArray(parsed)) parsed = [];
+    } catch {
+      parsed = [];
+    }
+    const next = JSON.stringify([...parsed, entry], null, 2);
+    void saveSettings({ smbServers: next }).then(() => {
+      setServersText(next);
+      showToast(t('settings.saved'));
+      setNewServer(false);
+      setForm({ name: '', host: '', share: '', user: '', pass: '' });
+    });
+  };
+
+  return (
+    <Panel title={t('settings.network')} index={4}>
+      <Field label={t('settings.smb')} hint={t('settings.smb.hint')}>
+        <div className="strip" data-on={settings.smbEnabled}>
+          <span className="strip__led" />
+          <div className="strip__text">
+            <div className="strip__name">{t('settings.smb')}</div>
+            <div className="strip__desc">{settings.smbEnabled ? t('proto.on') : t('proto.off')}</div>
+          </div>
+          <Switch
+            checked={settings.smbEnabled}
+            label={t('settings.smb')}
+            disabled={busy}
+            onChange={(next) => void saveSettings({ smbEnabled: next })}
+          />
+        </div>
+      </Field>
+
+      <Field label={t('settings.smbServers')} hint={t('settings.smbServers.hint')}>
+        <textarea
+          className="input input--mono"
+          rows={7}
+          dir="ltr"
+          value={serversText}
+          disabled={busy}
+          onChange={(e) => setServersText(e.target.value)}
+          onBlur={commitServers}
+        />
+      </Field>
+
+      {newServer ? (
+        <div className="field" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="field__label">{t('settings.addServer')}</div>
+          <input className="input" placeholder={t('settings.serverName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input className="input" placeholder={t('settings.serverHost')} dir="ltr" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+          <input className="input" placeholder={t('settings.serverShare')} value={form.share} onChange={(e) => setForm({ ...form, share: e.target.value })} />
+          <input className="input" placeholder={t('settings.serverUser')} value={form.user} onChange={(e) => setForm({ ...form, user: e.target.value })} />
+          <input className="input" type="password" placeholder={t('settings.serverPass')} value={form.pass} onChange={(e) => setForm({ ...form, pass: e.target.value })} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn" onClick={addServer}>{t('settings.addServer')}</button>
+            <button type="button" className="btn btn--ghost" onClick={() => setNewServer(false)}>{t('common.close')}</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn btn--ghost" onClick={() => setNewServer(true)}>
+          {t('settings.addServer')}
+        </button>
+      )}
+
+      <Field label={t('settings.castEnabled')} hint={t('settings.castEnabled') + ' — ' + t('settings.castAppId.hint')}>
+        <div className="strip" data-on={settings.castEnabled}>
+          <span className="strip__led" />
+          <div className="strip__text">
+            <div className="strip__name">{t('settings.castEnabled')}</div>
+            <div className="strip__desc">{settings.castEnabled ? t('proto.on') : t('proto.off')}</div>
+          </div>
+          <Switch
+            checked={settings.castEnabled}
+            label={t('settings.castEnabled')}
+            disabled={busy}
+            onChange={(next) => void saveSettings({ castEnabled: next })}
+          />
+        </div>
+      </Field>
+
+      <Field label={t('settings.castAppId')} hint={t('settings.castAppId.hint')}>
+        <input
+          className="input input--mono"
+          dir="ltr"
+          placeholder="CC1AD845"
+          value={settings.castAppId}
+          maxLength={45}
+          disabled={busy}
+          onChange={(e) => void saveSettings({ castAppId: e.target.value.trim() })}
+        />
+      </Field>
+
+      <button
+        type="button"
+        className="btn btn--ghost"
+        onClick={() => void AirCast.openExternal({ url: 'https://developers.google.com/cast/docs/registration' })}
+      >
+        {t('settings.castGuided')}
+      </button>
+    </Panel>
   );
 }
