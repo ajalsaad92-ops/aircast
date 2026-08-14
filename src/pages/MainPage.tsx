@@ -60,6 +60,8 @@ export function MainPage() {
   const transportLabel = t(`net.${status?.transport ?? 'unknown'}` as never);
   const mirrorEnabled = (settings?.mirrorEnabled ?? false) && (status?.running ?? false);
   const mirrorUrl = status?.mirrorUrl ?? '';
+  const castEnabled = (settings?.castEnabled ?? false) && (status?.running ?? false);
+  const castAppId = settings?.castAppId ?? '';
 
   const { state, session, stream, stop } = useMirror(status?.ip, mirrorEnabled);
 
@@ -333,7 +335,20 @@ export function MainPage() {
         </Panel>
       )}
 
-      <Panel title={t('sessions.title')} flush index={5}>
+      {castEnabled && (
+        <Panel title={t('settings.castEnabled')} index={5}>
+          <p style={{ margin: '0 0 4px', color: 'var(--ink-2)', fontSize: '0.87rem', lineHeight: 1.7 }}>
+            {castAppId
+              ? t('cast.statusReady', { appId: castAppId })
+              : t('cast.statusNotReady')}
+          </p>
+          {!castAppId && (
+            <p className="note note--muted">{t('settings.castAppId.hint')}</p>
+          )}
+        </Panel>
+      )}
+
+      <Panel title={t('sessions.title')} flush index={castEnabled ? 6 : 5}>
         {status && status.sessions.length > 0 ? (
           <div className="rows">
             {status.sessions.map((session) => (

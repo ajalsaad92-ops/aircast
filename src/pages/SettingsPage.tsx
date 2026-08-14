@@ -329,9 +329,11 @@ export function SettingsPage() {
         </Field>
       </Panel>
 
+      <CastPanel />
+
       <NetworkPanel />
 
-      <Panel title={t('settings.about')} index={5}>
+      <Panel title={t('settings.about')} index={6}>
         {/* One port per cell: three of them on a single line wrap mid-number in the
             narrow column the auto-fit grid produces on a phone. */}
         <div className="meta" style={{ marginTop: 0 }}>
@@ -386,6 +388,58 @@ export function SettingsPage() {
         <p className="note note--muted">{t('settings.notSupported.body')}</p>
       </Panel>
     </>
+  );
+}
+
+/**
+ * TV-side receiver page: opens the Cast web receiver full-screen on an
+ * Android TV browser so the same device doubles as a Cast screen.
+ */
+function CastPanel() {
+  const { status, settings, busy, t, showToast } = useReceiver();
+  const [appId, setAppId] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!settings?.castEnabled) return;
+    void AirCast.castStatus()
+      .then((res) => {
+        setAppId(res.appId);
+        setReady(res.ready);
+      })
+      .catch(() => undefined);
+  }, [settings?.castEnabled]);
+
+  if (!settings) return null;
+
+  const tls = status?.tlsReady ? status.httpsPort : status?.httpPort ?? 8321;
+  const scheme = status?.tlsReady ? 'https' : 'http';
+  const ip = status?.ips?.[0] ?? '127.0.0.1';
+  const receiverUrl = `${scheme}://${ip}:${tls}/`;
+
+  const openOnTv = () => {
+    void AirCast.openExternal({ url: receiverUrl }).catch(() => showToast(receiverUrl));
+  };
+
+  return (
+    <Panel title={t('cast.panel')} index={4}>
+      <p className="note note--muted">{t('cast.openOnTv.hint')}</p>
+      {ready ? (
+        <p className="note">{t('cast.statusReady', { appId })}</p>
+      ) : (
+        <p className="note note--muted">{t('cast.statusNotReady')}</p>
+      )}
+      <Field label={t('cast.openOnTv')}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <code dir="ltr" style={{ flex: 1, fontSize: '0.8rem', color: 'var(--ink-3)' }}>
+            {receiverUrl}
+          </code>
+          <button type="button" className="btn" disabled={busy} onClick={openOnTv}>
+            {t('cast.openOnTv')}
+          </button>
+        </div>
+      </Field>
+    </Panel>
   );
 }
 
@@ -449,7 +503,7 @@ function NetworkPanel() {
   };
 
   return (
-    <Panel title={t('settings.network')} index={4}>
+    <Panel title={t('settings.network')} index={5}>
       <Field label={t('settings.smb')} hint={t('settings.smb.hint')}>
         <div className="strip" data-on={settings.smbEnabled}>
           <span className="strip__led" />
