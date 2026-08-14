@@ -9,6 +9,7 @@ export default defineConfig({
     assetsDir: 'assets',
     target: 'es2020',
     sourcemap: false,
+    minify: 'esbuild',
     chunkSizeWarningLimit: 900,
   },
   server: {

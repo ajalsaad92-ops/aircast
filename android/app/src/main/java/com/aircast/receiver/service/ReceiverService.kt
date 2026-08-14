@@ -328,6 +328,14 @@ class ReceiverService : Service() {
 
     /** Shared routing table for the plain and TLS listeners. */
     private fun route(req: HttpRequest, secure: Boolean): HttpResponse? {
+        // Diagnostic sink: the WebView posts every uncaught JS error here so a
+        // black screen always leaves a trace in logcat (tag `jserror`).
+        if (req.path == "/__diag") {
+            try {
+                Logger.e("jserror", req.query["msg"]?.ifEmpty { null } ?: req.bodyText())
+            } catch (_: Exception) { /* best effort */ }
+            return HttpResponse(204, null)
+        }
         mirror.handle(req)?.let { return it }
         if (prefs.smbEnabled) {
             SmbStream.handle(req)?.let { return it }
@@ -614,6 +622,11 @@ class ReceiverService : Service() {
                 .put("activeMirrors", MirrorSignaling.activeCount())
                 .put("playback", Playback.toJson())
                 .put("recording", com.aircast.receiver.record.RecorderService.isRecording)
+                // Every snapshot the UI receives must carry the full shape the React
+                // components render from — a partial event status drops the extra
+                // fields and crashes the page (see "reading 'pending'").
+                .put("pendingConnections", AccessGate.pendingConnectionsJson())
+                .put("airplayCode", AccessGate.currentAirPlayCode())
         }
     }
 }

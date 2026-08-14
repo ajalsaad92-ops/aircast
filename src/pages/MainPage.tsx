@@ -78,7 +78,7 @@ export function MainPage() {
 
   // Keep the oldest pending request visible for accept / reject / trust.
   useEffect(() => {
-    setPending((status?.pendingConnections.pending ?? [])[0]);
+    setPending((status?.pendingConnections?.pending ?? [])[0]);
   }, [status?.pendingConnections]);
 
   // In fullscreen the picture must be clean: show the badge briefly, then fade.
