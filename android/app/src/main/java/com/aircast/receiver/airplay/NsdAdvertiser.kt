@@ -53,19 +53,27 @@ class NsdAdvertiser(private val context: Context) {
             attributes = raopTxt(),
         )
 
-        // Google Cast is deliberately NOT advertised.
-        //
-        // The discovery and control layers work - senders found AirCast and opened a
-        // channel. They then hang up at device authentication, which is exactly what it
-        // is designed to do: the sender checks that our certificate chains to Google's
-        // Cast CA, and ours does not. Every open-source receiver that gets past this
-        // (shanocast, for one) does so by lifting an RSA key pair and precomputed
-        // signatures out of a licensed app. That is someone else's private key, and this
-        // project will not ship it.
-        //
-        // So the record stays off. Advertising a receiver that appears in the list and
-        // then fails on selection is worse than not appearing at all - CastReceiver is
-        // still wired up for anyone holding real credentials, but nothing announces it.
+        // Advertise as a Google Cast receiver so a Quest / Chrome sender discovers
+        // AirCast in its cast list. Selection still passes through device auth in
+        // CastReceiver (the CastAuth replay); on a Quest with "Bypass Device Auth"
+        // enabled the session proceeds to the WebRTC OFFER and CastMirrorActivity shows
+        // the stream. Without bypass the sender may still hang up at authentication.
+        register(
+            manager,
+            serviceName = name,
+            type = "_googlecast._tcp",
+            port = com.aircast.receiver.cast.CastV2.PORT,
+            attributes = mapOf(
+                "id" to castDeviceId(),
+                "ve" to "05",
+                "md" to "AirCast",
+                "ic" to "/setup/icon.png",
+                "fn" to name,
+                "ca" to "4101",
+                "st" to "0",
+                "rs" to "",
+            ),
+        )
 
         // Our own record, used by the companion sender page to find the box by name.
         register(
