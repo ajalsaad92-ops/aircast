@@ -75,7 +75,15 @@
       <span lang-ar>احفظ <b>هذا العنوان</b> (وليس صفحة البث نفسها). عند فتحه سيوجّهك دائمًا إلى بث آمن محدّث، فتنتهي مشكلة تبدّل http/https:</span>
       <span lang-en>Save <b>this address</b> (not the cast page itself). Opening it always forwards you to the current secure cast, so the http/https mix-up goes away:</span>
     </p>
-    <p style="margin-top:8px"><code>http://{{IP}}:{{HTTP_PORT}}/</code></p>
+    <p style="margin-top:8px">
+      <span lang-ar>المُوصى به (ينجو من تغيّر عنوان الشبكة):</span>
+      <span lang-en>Recommended (survives IP changes):</span>
+      <br><code>{{MDNS_URL}}</code>
+    </p>
+    <p style="margin-top:6px;opacity:.85">
+      <span lang-ar>أو عبر العنوان الرقمي:</span><span lang-en>Or via the numeric address:</span>
+      <br><code>http://{{IP}}:{{HTTP_PORT}}/</code>
+    </p>
   </div>
 
   <div class="grid">

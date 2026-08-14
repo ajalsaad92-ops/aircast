@@ -44,6 +44,7 @@ class MirrorHandler(private val context: Context) {
                 .replace("{{HTTPS_URL}}", httpsUrl)
                 .replace("{{IP}}", ip)
                 .replace("{{HTTP_PORT}}", prefs.httpPort.toString())
+                .replace("{{MDNS_URL}}", "http://aircast.local:${prefs.httpPort}/")
                 .replace("{{MIRROR_ENABLED}}", if (prefs.mirrorEnabled) "1" else "0"),
         )
     }

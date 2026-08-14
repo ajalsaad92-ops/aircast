@@ -17,6 +17,7 @@ import android.os.PowerManager
 import com.aircast.receiver.MainActivity
 import com.aircast.receiver.R
 import com.aircast.receiver.airplay.AirPlayHandler
+import com.aircast.receiver.airplay.LocalHostname
 import com.aircast.receiver.airplay.NsdAdvertiser
 import com.aircast.receiver.core.Events
 import com.aircast.receiver.core.HttpRequest
@@ -58,6 +59,7 @@ class ReceiverService : Service() {
     private var airplayServer: HttpServer? = null
     private var ssdp: Ssdp? = null
     private var nsd: NsdAdvertiser? = null
+    private var hostname: LocalHostname? = null
     private var cast: com.aircast.receiver.cast.CastReceiver? = null
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -129,6 +131,8 @@ class ReceiverService : Service() {
         if (prefs.airplayEnabled) {
             nsd = NsdAdvertiser(this).also { it.start(prefs.airplayPort, prefs.httpPort) }
         }
+        // Stable aircast.local name so a bookmark survives the IP changing.
+        hostname = LocalHostname(this).also { it.start(lastIp) }
 
         acquireWakeLock()
         Playback.addStateListener(playbackListener)
@@ -154,6 +158,7 @@ class ReceiverService : Service() {
 
         ssdp?.stop(); ssdp = null
         nsd?.stop(); nsd = null
+        hostname?.stop(); hostname = null
         cast?.stop(); cast = null
         httpServer?.stop(); httpServer = null
         httpsServer?.stop(); httpsServer = null
@@ -264,6 +269,7 @@ class ReceiverService : Service() {
             it.stop()
             it.start(prefs.airplayPort, prefs.httpPort)
         }
+        hostname?.start(ip)
         broadcastStatus()
     }
 
