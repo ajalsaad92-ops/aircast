@@ -6,12 +6,13 @@
 |---|---|
 | عنوان IP على الشبكة المحلية | `192.168.102.111` |
 | حالة استقبال Google Cast | مفعّل (`cast_on = true`) |
-| معرّف التطبيق (App ID) الحالي | فارغ — سيستخدم المستقبِل الافتراضي `CC1AD845` |
+| معرّف التطبيق (App ID) | `02898B6E` — تم التسجيل في الكونسول (Unpublished) وتفعيله على الهاتف |
+| حالة المستقبِل (`castStatus`) | `ready: true` — المستقبِل جاهز للربط |
 | ملف الإعدادات | `/data/data/com.aircast.receiver.debug/shared_prefs/aircast.xml` |
 
-بما أن App ID فارغ حاليًا، يعمل التطبيق الآن بالمستقبِل الافتراضي `CC1AD845`
-(Styled Media Receiver). لتتمكن أجهزة الإرسال التي تعرف تطبيقك المخصص من
-الوصول إليه، سجّل التطبيق في الكونسول ثم أدخل المعرّف كما يلي.
+تم إنشاء التطبيق بنجاح في Google Cast Developer Console (Unpublished — يعمل فقط
+على الأجهزة المملوكة لنفس حساب Google). بعد التفعيل من الكونسول استغرق الأمر
+نحو 15–30 دقيقة قبل أن يصبح متاحًا.
 
 ## الجزء الأول: التسجيل في Google Cast Developer Console
 
@@ -54,20 +55,30 @@
 
 ### الطريقة 2 — مباشرة عبر ADB (بدون لمس التطبيق)
 
-من PowerShell على جهازك (مع الهاتف متصل USB):
+> ملاحظة: التطبيق يدعم الآن (من الإصدار المحدث) استقبال المعرّف عبر أمر
+> الإطلاق مباشرة، وهذه هي الطريقة الموثوقة. تعديل ملف XML يدويًا لا يصمد لأن
+> ذاكرة العملية (SharedPreferences cache) تعيد كتابة الملف الكامل فوق أي
+> تعديل خارجي عند كل إعادة تشغيل.
 
-```powershell
-adb shell "run-as com.aircast.receiver.debug sh -c 'sed -i \"s|</map>|<string name=\"castAppId\" value=\"YOUR-APP-ID\"/></map>|\" shared_prefs/aircast.xml'"
-```
-
-استبدل `YOUR-APP-ID` بالمعرّف المنسوخ، ثم أعد تشغيل التطبيق:
+من PowerShell على جهازك (مع الهاتف متصل USB) — استبدل `02898B6E` بمعرّفك:
 
 ```powershell
 adb shell am force-stop com.aircast.receiver.debug
-adb shell am start -n com.aircast.receiver.debug/com.aircast.receiver.MainActivity
+adb shell am start -n com.aircast.receiver.debug/com.aircast.receiver.MainActivity --es cast_app_id 02898B6E
 ```
 
-التحقق من النجاح:
+يُثبّت الأمر المعرّف فورًا قبل أي كتابة أخرى، ثم يبدأ المستقبِل تلقائيًا.
+
+التحقق من النجاح (عبر البلغن):
+
+```powershell
+adb shell am force-stop com.aircast.receiver.debug
+# افتح التطبيق مجددًا، ثم من أدوات المطور:
+Runtime.evaluate → window.Capacitor.Plugins.AirCast.castStatus()
+# يجب أن يرجع: {"appId":"02898B6E","ready":true}
+```
+
+وللتحقق من ملف الإعدادات مباشرة:
 
 ```powershell
 adb shell run-as com.aircast.receiver.debug cat shared_prefs/aircast.xml
