@@ -1,6 +1,7 @@
 package com.aircast.receiver.airplay
 
 import android.content.Context
+import com.aircast.receiver.core.AccessGate
 import com.aircast.receiver.core.HttpRequest
 import com.aircast.receiver.core.HttpResponse
 import com.aircast.receiver.core.Logger
@@ -29,6 +30,7 @@ class AirPlayHandler(private val context: Context) {
 
     fun handle(req: HttpRequest): HttpResponse? {
         val path = req.path
+        if (path == "/play" && !gatePermits(req)) return HttpResponse.empty(403)
         val handled = when (path) {
             "/server-info", "/info" -> serverInfo(req)
             "/play" -> play(req)
@@ -50,6 +52,20 @@ class AirPlayHandler(private val context: Context) {
             Sessions.touch("airplay", req.remoteIp, senderName(req))
         }
         return handled
+    }
+
+    /**
+     * Access control for `/play`. When a security mode is configured the sender
+     * must include the shared secret in the `X-AirCast-Code` header — the
+     * on-screen prompt adds exactly that header before repeating the request.
+     * Stock iOS senders cannot know about the header, so unmodified Apple
+     * clients are only gated when the mode is `off` (legacy behaviour).
+     */
+    private fun gatePermits(req: HttpRequest): Boolean {
+        val secret = req.header("x-aircast-code")
+        if (AccessGate.airplayAuthorized(secret)) return true
+        Logger.w("airplay", "/play blocked for ${req.remoteIp}: ${prefs.airplaySecurityMode} gate failed")
+        return false
     }
 
     private fun senderName(req: HttpRequest): String =

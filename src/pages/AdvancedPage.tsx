@@ -4,9 +4,10 @@ import { Panel, Switch } from '../components/ui';
 import { SettingsPage } from './SettingsPage';
 import { ActivityPage } from './ActivityPage';
 import { GuidePage } from './GuidePage';
+import { TroubleshootPage } from './TroubleshootPage';
 import type { ProtocolKey } from '../lib/aircast';
 
-type Sub = 'protocols' | 'settings' | 'activity' | 'guide';
+type Sub = 'protocols' | 'settings' | 'activity' | 'guide' | 'troubleshoot';
 
 /** Protocol toggles moved off the main page, plus room for future cast methods. */
 function ProtocolsSection() {
@@ -65,6 +66,7 @@ export function AdvancedPage() {
     { id: 'settings', label: t('nav.settings') },
     { id: 'activity', label: t('nav.activity') },
     { id: 'guide', label: t('nav.guide') },
+    { id: 'troubleshoot', label: t('nav.troubleshoot') },
   ];
 
   return (
@@ -89,6 +91,8 @@ export function AdvancedPage() {
         <SettingsPage />
       ) : sub === 'activity' ? (
         <ActivityPage />
+      ) : sub === 'troubleshoot' ? (
+        <TroubleshootPage />
       ) : (
         <GuidePage />
       )}

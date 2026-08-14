@@ -1,6 +1,7 @@
 package com.aircast.receiver.cast
 
 import android.content.Context
+import com.aircast.receiver.core.AccessGate
 import com.aircast.receiver.core.Logger
 import com.aircast.receiver.core.Net
 import com.aircast.receiver.core.Prefs
@@ -47,6 +48,9 @@ class CastReceiver(private val context: Context) {
 
     /** Set once a sender launches an app, so a second sender sees the receiver as busy. */
     @Volatile private var sessionId: String? = null
+
+    /** Friendly name of the current socket, read from the first CONNECT payload. */
+    @Volatile private var currentSenderName: String = ""
     @Volatile private var currentAppId: String = ""
     @Volatile private var currentPeer: String = ""
     @Volatile private var currentOutput: DataOutputStream? = null
@@ -111,6 +115,35 @@ class CastReceiver(private val context: Context) {
     private fun serve(socket: Socket) {
         val peer = socket.inetAddress?.hostAddress ?: "?"
         Logger.i("cast", "sender connected from $peer")
+
+        // ---- Cast security gate (AirScreen `Cast security`): new senders may be
+        //      held here until the user accepts or rejects them in the UI.
+        if (!AccessGate.castShouldProceed(peer, peer, currentSenderName)) {
+            // Wait up to the gate timeout for a user decision before dropping.
+            val deadline = System.currentTimeMillis() + 60_000L
+            var granted = false
+            while (System.currentTimeMillis() < deadline) {
+                try {
+                    Thread.sleep(1000)
+                } catch (_: InterruptedException) {
+                    break
+                }
+                if (Prefs.get(context).castTrustedPeers().contains(peer) ||
+                    !AccessGate.isPending(peer)
+                ) {
+                    granted = true
+                    break
+                }
+            }
+            if (!granted) {
+                Logger.i("cast", "sender $peer removed — not accepted in time")
+                Sessions.end("cast", peer)
+                try { socket.close() } catch (_: Exception) {}
+                return
+            }
+            Logger.i("cast", "sender $peer accepted through the security gate")
+        }
+
         Sessions.touch("cast", peer)
         var output: DataOutputStream? = null
         try {
@@ -132,6 +165,7 @@ class CastReceiver(private val context: Context) {
             if (currentPeer == peer) {
                 currentOutput = null
                 currentPeer = ""
+                currentSenderName = ""
             }
             try { socket.close() } catch (_: Exception) {}
             Logger.i("cast", "sender $peer disconnected")
@@ -146,6 +180,15 @@ class CastReceiver(private val context: Context) {
             CastV2.NS_CONNECTION -> {
                 val type = jsonType(message.payloadUtf8)
                 Logger.i("cast", "connection: $type from $peer")
+                if (type == "CONNECT") {
+                    // `userAgent` in CONNECT is the sender app; the friendly device
+                    // name is best-effort and shows up in the accept/reject dialog.
+                    val payload = JSONObject(message.payloadUtf8 ?: "{}")
+                    val name = payload.optString("userAgent", "")
+                        .ifEmpty { payload.optString("displayName", "") }
+                    currentSenderName = name
+                    AccessGate.updatePendingName(peer, name)
+                }
                 // CONNECT needs no reply; CLOSE means this virtual connection is done.
             }
 

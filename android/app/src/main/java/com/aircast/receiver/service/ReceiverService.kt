@@ -19,12 +19,15 @@ import com.aircast.receiver.R
 import com.aircast.receiver.airplay.AirPlayHandler
 import com.aircast.receiver.airplay.LocalHostname
 import com.aircast.receiver.airplay.NsdAdvertiser
+import com.aircast.receiver.core.AccessGate
 import com.aircast.receiver.core.Events
 import com.aircast.receiver.core.HttpRequest
 import com.aircast.receiver.core.HttpResponse
 import com.aircast.receiver.core.HttpServer
 import com.aircast.receiver.core.Logger
 import com.aircast.receiver.core.Net
+import com.aircast.receiver.core.OverlayActivity
+import android.provider.Settings
 import com.aircast.receiver.core.Prefs
 import com.aircast.receiver.core.Sessions
 import com.aircast.receiver.dlna.DlnaHandler
@@ -73,6 +76,26 @@ class ReceiverService : Service() {
         updateNotification()
     }
 
+    /**
+     * `smartVideoQuality`: when a mirror sender is dropping frames, quietly lower the
+     * mirroring resolution cap so the link has headroom again — then keep it there.
+     */
+    private val diagnosticsListener = Events.Listener { name, _ ->
+        if (name != "decoderStall" || !prefs.smartVideoQuality) return@Listener
+        try {
+            val current = prefs.mirrorQuality
+            if (current > 0) {
+                val next = (current - 360).coerceAtLeast(720)
+                if (next != current) {
+                    prefs.mirrorQuality = next
+                    Logger.i("service", "smart quality lowered mirror cap to ${next}p after frame stalls")
+                }
+            }
+        } catch (_: Exception) {
+            /* preferences are best-effort */
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs.get(this)
@@ -115,8 +138,11 @@ class ReceiverService : Service() {
     private fun startEverything() {
         if (isRunning) return
         instance = this
+        AccessGate.init(this)
+        Sessions.prefs = prefs
         prefs.bootId = prefs.bootId + 1
         lastIp = Net.primaryIp()
+        Net.registerWatcher(this)
 
         startHttp()
         startHttps()
@@ -137,7 +163,9 @@ class ReceiverService : Service() {
         acquireWakeLock()
         Playback.addStateListener(playbackListener)
         registerNetworkCallback()
+        Events.addListener(diagnosticsListener)
         startTicking()
+        syncOverlayActivity()
 
         isRunning = true
         Logger.i("service", "receiver online as \"${prefs.deviceName}\" at $lastIp")
@@ -155,6 +183,8 @@ class ReceiverService : Service() {
 
         Playback.removeStateListener(playbackListener)
         unregisterNetworkCallback()
+        Events.removeListener(diagnosticsListener)
+        Net.unregisterWatcher(this)
 
         ssdp?.stop(); ssdp = null
         nsd?.stop(); nsd = null
@@ -168,9 +198,55 @@ class ReceiverService : Service() {
         Sessions.clear()
         Gena.clear()
         releaseWakeLock()
+        stopOverlayActivity()
         instance = null
         Logger.i("service", "receiver offline")
         broadcastStatus()
+    }
+
+    // ---- background overlay (screensaver canvas) ----------------------------
+
+    /**
+     * Mirrors AirScreen's background screensaver: when the receiver is on and the
+     * `canvas` mode is active, an animated overlay window sits above the home screen
+     * so the device stays visibly alive even with the app closed.
+     */
+    @Synchronized
+    fun syncOverlayActivity() {
+        val wantCanvas = prefs.backgroundMode == "canvas"
+        if (!wantCanvas) {
+            stopOverlayActivity()
+            return
+        }
+        val hasPermission = try {
+            Settings.canDrawOverlays(this)
+        } catch (_: Exception) {
+            false
+        }
+        if (!hasPermission) {
+            Logger.w("service", "overlay canvas needs SYSTEM_ALERT_WINDOW — permission not granted")
+            return
+        }
+        try {
+            val intent = Intent(this, OverlayActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Logger.e("service", "overlay canvas failed: ${e.message}")
+        }
+    }
+
+    private fun stopOverlayActivity() {
+        try {
+            val intent = Intent(this, OverlayActivity::class.java).apply {
+                action = OverlayActivity.ACTION_HIDE
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            /* overlay may not be running — that's fine */
+        }
     }
 
     /** Applies changed settings without dropping active playback where possible. */
@@ -243,6 +319,7 @@ class ReceiverService : Service() {
                     Sessions.sweep()
                     MirrorSignaling.sweep()
                     Gena.sweep()
+                    AccessGate.sweepPending()
                     checkAddressChange()
                     broadcastStatus()
                 } catch (e: Exception) {
@@ -489,6 +566,7 @@ class ReceiverService : Service() {
                 .put("mirrorPeers", MirrorSignaling.peersJson())
                 .put("activeMirrors", MirrorSignaling.activeCount())
                 .put("playback", Playback.toJson())
+                .put("recording", com.aircast.receiver.record.RecorderService.isRecording)
         }
     }
 }

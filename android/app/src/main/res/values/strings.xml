@@ -23,4 +23,5 @@
     <string name="player_error">Cannot play this media</string>
     <string name="player_photo">Received photo</string>
     <string name="player_audio_art">Audio</string>
+    <string name="overlay_subtitle">Receiver is running — tap to open</string>
 </resources>

@@ -67,6 +67,17 @@ export function MainPage() {
   const [qr, setQr] = useState<string | null>(null);
   const [full, setFull] = useState(false);
   const [showChrome, setShowChrome] = useState(true);
+  const [pending, setPending] = useState<{
+    protocol: string;
+    ip: string;
+    name: string;
+    createdAt: number;
+  }>();
+
+  // Keep the oldest pending request visible for accept / reject / trust.
+  useEffect(() => {
+    setPending((status?.pendingConnections.pending ?? [])[0]);
+  }, [status?.pendingConnections]);
 
   // In fullscreen the picture must be clean: show the badge briefly, then fade.
   useEffect(() => {
@@ -155,6 +166,44 @@ export function MainPage() {
 
   return (
     <>
+      {pending && (
+        <Panel index={-1}>
+          <div className="strip" data-on>
+            <span className="strip__led strip__led--amber" />
+            <div className="strip__text">
+              <div className="strip__name">{t('security.pending.title')}</div>
+              <div className="strip__desc">
+                {pending.name || pending.ip} · {pending.ip}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn--slim"
+                onClick={() => void AirCast.resolveConnection({ peer: pending.ip, accept: false })}
+              >
+                {t('security.reject')}
+              </button>
+              <button
+                type="button"
+                className="btn btn--slim"
+                onClick={() => void AirCast.resolveConnection({ peer: pending.ip, accept: true })}
+              >
+                {t('security.accept')}
+              </button>
+              <button
+                type="button"
+                className="btn btn--slim btn--amber"
+                onClick={() =>
+                  void AirCast.resolveConnection({ peer: pending.ip, accept: true, trustAlways: true })
+                }
+              >
+                {t('security.acceptTrust')}
+              </button>
+            </div>
+          </div>
+        </Panel>
+      )}
       <Panel index={0}>
         <div className={`dial${running ? ' is-on' : ''}${live ? ' is-live' : ''}`}>
           <Dial on={running} live={live} />

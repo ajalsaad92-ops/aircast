@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useReceiver } from '../hooks/useReceiver';
 import { Field, Panel, Switch } from '../components/ui';
-import { AirCast } from '../lib/aircast';
+import { AirCast, type Settings } from '../lib/aircast';
 
 export function SettingsPage() {
   const { settings, status, lang, busy, t, saveSettings, restart, setLang, showToast } =
@@ -10,6 +10,8 @@ export function SettingsPage() {
   const [name, setName] = useState(settings?.deviceName ?? '');
   const [pin, setPin] = useState(settings?.pinCode ?? '');
   const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [airplayCode, setAirplayCode] = useState<string>('');
+  const [trusted, setTrusted] = useState<string[]>([]);
 
   useEffect(() => {
     if (settings) {
@@ -23,6 +25,24 @@ export function SettingsPage() {
       .then(({ fingerprint: fp }) => setFingerprint(fp))
       .catch(() => setFingerprint(null));
   }, [status?.tlsReady]);
+
+  useEffect(() => {
+    void AirCast.getTrustedPeers().then(({ peers }) => setTrusted(peers));
+    if (settings?.airplaySecurityMode === 'code' && !settings?.pinCode) {
+      void AirCast.getAirPlayCode().then(({ code }) => setAirplayCode(code));
+    } else {
+      setAirplayCode('');
+    }
+  }, [settings?.airplaySecurityMode, settings?.pinCode]);
+
+  // The on-screen code refreshes every ten minutes; poll gently while relevant.
+  useEffect(() => {
+    if (!airplayCode) return;
+    const timer = setInterval(() => {
+      void AirCast.getAirPlayCode().then(({ code }) => setAirplayCode(code));
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [airplayCode]);
 
   if (!settings) return null;
 
@@ -40,6 +60,11 @@ export function SettingsPage() {
     if (next === settings.pinCode) return;
     void saveSettings({ pinCode: next }).then(() => showToast(t('settings.saved')));
   };
+
+  const togglesDisplay: Array<{ key: keyof typeof settings; label: string; hint: string }> = [
+    { key: 'keepPlaying', label: t('settings.keepPlaying'), hint: t('settings.keepPlaying.hint') },
+    { key: 'smartVideoQuality', label: t('settings.smartVideoQuality'), hint: t('settings.smartVideoQuality.hint') },
+  ];
 
   const toggles: Array<{ key: keyof typeof settings; label: string }> = [
     { key: 'autoStart', label: t('settings.autoStart') },
@@ -130,6 +155,164 @@ export function SettingsPage() {
           />
         </Field>
 
+        <Field label={t('settings.airplaySecurity')} hint={t('settings.airplaySecurity.hint')}>
+          <select
+            className="select"
+            value={settings.airplaySecurityMode}
+            disabled={busy}
+            onChange={(e) =>
+              void saveSettings({ airplaySecurityMode: e.target.value as Settings['airplaySecurityMode'] })
+            }
+          >
+            <option value="off">{t('security.off')}</option>
+            <option value="code">{t('security.code')}</option>
+            <option value="password">{t('security.password')}</option>
+          </select>
+        </Field>
+
+        {settings.airplaySecurityMode === 'code' && !settings.pinCode && (
+          <div className="strip" data-on>
+            <div className="strip__text">
+              <div className="strip__name">{t('security.airplayCode.title')}</div>
+              <div className="strip__desc">{t('security.airplayCode.desc')}</div>
+            </div>
+            <code className="code--mono" style={{ fontSize: '1.4rem', letterSpacing: '0.35rem' }}>
+              {airplayCode}
+            </code>
+          </div>
+        )}
+
+        <Field label={t('settings.castSecurity')} hint={t('settings.castSecurity.hint')}>
+          <select
+            className="select"
+            value={settings.castSecurityMode}
+            disabled={busy}
+            onChange={(e) =>
+              void saveSettings({ castSecurityMode: e.target.value as Settings['castSecurityMode'] })
+            }
+          >
+            <option value="off">{t('security.off')}</option>
+            <option value="ask">{t('security.ask')}</option>
+          </select>
+        </Field>
+
+        <div className="field__label">{t('settings.trustedPeers')}</div>
+        {trusted.length === 0 ? (
+          <p className="note note--muted">{t('settings.trustedPeers.empty')}</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+            {trusted.map((peer) => (
+              <div className="strip" key={peer} data-on>
+                <span className="strip__led" />
+                <div className="strip__text">
+                  <div className="strip__name">{peer}</div>
+                  <div className="strip__desc">{t('settings.clearTrusted')}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {trusted.length > 0 && (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            style={{ marginTop: 8 }}
+            disabled={busy}
+            onClick={() => void AirCast.clearTrustedPeers().then(() => setTrusted([]))}
+          >
+            {t('settings.clearTrusted')}
+          </button>
+        )}
+
+        <Field label={t('settings.multiDevice')} hint={t('settings.multiDevice.hint')}>
+          <select
+            className="select"
+            value={String(settings.multiDeviceMax ?? 0)}
+            disabled={busy}
+            onChange={(e) => void saveSettings({ multiDeviceMax: Number(e.target.value) })}
+          >
+            <option value="0">{t('settings.multiDevice.unlimited')}</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </Field>
+
+        <div className="field__label" style={{ marginTop: 16 }}>{t('settings.display')}</div>
+
+        <Field label={t('settings.forcedRotation')} hint={t('settings.forcedRotation.hint')}>
+          <select
+            className="select"
+            value={settings.forcedRotation}
+            disabled={busy}
+            onChange={(e) =>
+              void saveSettings({ forcedRotation: e.target.value as Settings['forcedRotation'] })
+            }
+          >
+            <option value="auto">{t('rotation.auto')}</option>
+            <option value="horizontal">{t('rotation.horizontal')}</option>
+            <option value="vertical">{t('rotation.vertical')}</option>
+          </select>
+        </Field>
+
+        <Field label={t('settings.screenResolution')} hint={t('settings.screenResolution.hint')}>
+          <select
+            className="select"
+            value={settings.screenResolution}
+            disabled={busy}
+            onChange={(e) =>
+              void saveSettings({ screenResolution: e.target.value as Settings['screenResolution'] })
+            }
+          >
+            <option value="native">{t('resolution.native')}</option>
+            <option value="720p">720p</option>
+            <option value="1080p">1080p</option>
+            <option value="4k">4K</option>
+          </select>
+        </Field>
+
+        <div className="strip" data-on={settings.backgroundMode === 'canvas'}>
+          <span className="strip__led" />
+          <div className="strip__text">
+            <div className="strip__name">{t('settings.backgroundMode')}</div>
+            <div className="strip__desc">{t('settings.backgroundMode.hint')}</div>
+          </div>
+          <Switch
+            checked={settings.backgroundMode === 'canvas'}
+            label={t('settings.backgroundMode')}
+            disabled={busy}
+            onChange={async (next) => {
+              if (next) {
+                const { granted } = await AirCast.overlayPermission().catch(() => ({ granted: false }));
+                if (!granted) {
+                  await AirCast.requestOverlayPermission().catch(() => {});
+                  showToast(t('settings.overlayPermissionNeeded'));
+                  return;
+                }
+              }
+              void saveSettings({ backgroundMode: next ? 'canvas' : 'off' }).then(() =>
+                showToast(t('settings.saved')),
+              );
+            }}
+          />
+        </div>
+
+        {togglesDisplay.map(({ key, label, hint }) => (
+          <div className="strip" key={String(key)} data-on={Boolean(settings[key])}>
+            <span className="strip__led" />
+            <div className="strip__text">
+              <div className="strip__name">{label}</div>
+              <div className="strip__desc">{hint}</div>
+            </div>
+            <Switch
+              checked={Boolean(settings[key])}
+              label={label}
+              disabled={busy}
+              onChange={(next) => void saveSettings({ [key]: next })}
+            />
+          </div>
+        ))}
+
         <Field label={t('settings.quality')}>
           <select
             className="select"
@@ -146,7 +329,7 @@ export function SettingsPage() {
         </Field>
       </Panel>
 
-      <Panel title={t('settings.about')} index={4}>
+      <Panel title={t('settings.about')} index={5}>
         {/* One port per cell: three of them on a single line wrap mid-number in the
             narrow column the auto-fit grid produces on a phone. */}
         <div className="meta" style={{ marginTop: 0 }}>

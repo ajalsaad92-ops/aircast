@@ -31,6 +31,74 @@ class Prefs private constructor(context: Context) {
         get() = sp.getString(K_PIN, "") ?: ""
         set(v) = sp.edit().putString(K_PIN, v.filter { it.isDigit() }.take(6)).apply()
 
+    /**
+     * AirPlay senders access control — mirrors AirScreen's `AirPlay security`.
+     *   off      — anyone on the LAN may start playback (legacy behaviour).
+     *   code     — a 4-digit code is shown on this device's screen (regenerated
+     *              every ten minutes); the sender must enter it before playback
+     *              begins. Falls back to the PIN when one is configured.
+     *   password — the PIN configured in settings gates playback.
+     */
+    var airplaySecurityMode: String
+        get() = sp.getString(K_AIRPLAY_SECURITY, "off") ?: "off"
+        set(v) = sp.edit().putString(K_AIRPLAY_SECURITY, v).apply()
+
+    /**
+     * Cast connection access control — mirrors AirScreen's `Cast security`.
+     *   off — accept every new sender immediately.
+     *   ask — hold new senders until the user accepts or rejects them in the
+     *         UI; acceptance can be one-time or permanent ("always trust").
+     */
+    var castSecurityMode: String
+        get() = sp.getString(K_CAST_SECURITY, "off") ?: "off"
+        set(v) = sp.edit().putString(K_CAST_SECURITY, v).apply()
+
+    /** Persistent set of Cast peers the user marked as "always trust". */
+    fun castTrustedPeers(): Set<String> =
+        sp.getStringSet(K_CAST_TRUSTED, null)?.toHashSet() ?: emptySet()
+
+    fun castTrustedPeers(peers: Set<String>) =
+        sp.edit().putStringSet(K_CAST_TRUSTED, peers.toSet()).apply()
+
+    /**
+     * Upper bound for simultaneous sending devices (0 = unlimited, AirScreen
+     * defaults to one active session and warns when a second device joins).
+     */
+    var multiDeviceMax: Int
+        get() = sp.getInt(K_MULTI_MAX, 0)
+        set(v) = sp.edit().putInt(K_MULTI_MAX, v).apply()
+
+    /**
+     * Off-screen behaviour while the receiver is on:
+     *   `off`    — nothing; the notification and the service keep running.
+     *   `canvas` — a floating animated overlay (SYSTEM_ALERT_WINDOW) proves the
+     *              receiver is alive over the home screen — the same trick
+     *              AirScreen uses as its background screensaver.
+     */
+    var backgroundMode: String
+        get() = sp.getString(K_BG_MODE, "off") ?: "off"
+        set(v) = sp.edit().putString(K_BG_MODE, v).apply()
+
+    /** `auto` / `horizontal` / `vertical`: applied to the player window at load time. */
+    var forcedRotation: String
+        get() = sp.getString(K_ROTATION, "auto") ?: "auto"
+        set(v) = sp.edit().putString(K_ROTATION, v).apply()
+
+    /** `native` / `720p` / `1080p` / `4k`: caps the video renderer output size. */
+    var screenResolution: String
+        get() = sp.getString(K_RESOLUTION, "native") ?: "native"
+        set(v) = sp.edit().putString(K_RESOLUTION, v).apply()
+
+    /** Keep decoding when the screen locks instead of letting playback stall. */
+    var keepPlaying: Boolean
+        get() = sp.getBoolean(K_KEEP_PLAYING, false)
+        set(v) = sp.edit().putBoolean(K_KEEP_PLAYING, v).apply()
+
+    /** Auto-lower mirror quality when the link looks congested. */
+    var smartVideoQuality: Boolean
+        get() = sp.getBoolean(K_SMART_QUALITY, false)
+        set(v) = sp.edit().putBoolean(K_SMART_QUALITY, v).apply()
+
     var autoStart: Boolean
         get() = sp.getBoolean(K_AUTOSTART, true)
         set(v) = sp.edit().putBoolean(K_AUTOSTART, v).apply()
@@ -95,6 +163,15 @@ class Prefs private constructor(context: Context) {
         .put("httpPort", httpPort)
         .put("httpsPort", httpsPort)
         .put("airplayPort", airplayPort)
+        .put("airplaySecurityMode", airplaySecurityMode)
+        .put("castSecurityMode", castSecurityMode)
+        .put("castTrustedPeers", org.json.JSONArray().also { arr -> castTrustedPeers().forEach { arr.put(it) } })
+        .put("multiDeviceMax", multiDeviceMax)
+        .put("backgroundMode", backgroundMode)
+        .put("forcedRotation", forcedRotation)
+        .put("screenResolution", screenResolution)
+        .put("keepPlaying", keepPlaying)
+        .put("smartVideoQuality", smartVideoQuality)
 
     fun applyJson(o: JSONObject) {
         if (o.has("deviceName")) deviceName = o.optString("deviceName")
@@ -107,6 +184,14 @@ class Prefs private constructor(context: Context) {
         if (o.has("recordAudio")) recordAudio = o.optBoolean("recordAudio", true)
         if (o.has("language")) language = o.optString("language", "ar")
         if (o.has("mirrorQuality")) mirrorQuality = o.optInt("mirrorQuality", 0)
+        if (o.has("airplaySecurityMode")) airplaySecurityMode = o.optString("airplaySecurityMode", "off")
+        if (o.has("castSecurityMode")) castSecurityMode = o.optString("castSecurityMode", "off")
+        if (o.has("multiDeviceMax")) multiDeviceMax = o.optInt("multiDeviceMax", 0)
+        if (o.has("backgroundMode")) backgroundMode = o.optString("backgroundMode", "off")
+        if (o.has("forcedRotation")) forcedRotation = o.optString("forcedRotation", "auto")
+        if (o.has("screenResolution")) screenResolution = o.optString("screenResolution", "native")
+        if (o.has("keepPlaying")) keepPlaying = o.optBoolean("keepPlaying", false)
+        if (o.has("smartVideoQuality")) smartVideoQuality = o.optBoolean("smartVideoQuality", false)
     }
 
     companion object {
@@ -127,6 +212,15 @@ class Prefs private constructor(context: Context) {
         private const val K_HTTP_PORT = "http_port"
         private const val K_HTTPS_PORT = "https_port"
         private const val K_AIRPLAY_PORT = "airplay_port"
+        private const val K_AIRPLAY_SECURITY = "airplay_security"
+        private const val K_CAST_SECURITY = "cast_security"
+        private const val K_CAST_TRUSTED = "cast_trusted_peers"
+        private const val K_MULTI_MAX = "multi_device_max"
+        private const val K_BG_MODE = "background_mode"
+        private const val K_ROTATION = "forced_rotation"
+        private const val K_RESOLUTION = "screen_resolution"
+        private const val K_KEEP_PLAYING = "keep_playing"
+        private const val K_SMART_QUALITY = "smart_quality"
         private const val K_DEVICE_ID = "device_id_hex"
         private const val K_UUID = "uuid"
         private const val K_BOOT_ID = "boot_id"

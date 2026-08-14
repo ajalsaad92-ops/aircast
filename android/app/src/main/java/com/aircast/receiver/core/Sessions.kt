@@ -30,6 +30,9 @@ object Sessions {
 
     private val sessions = ConcurrentHashMap<String, Session>()
 
+    /** Set by the service at start so sessions can read the multi-device limit. */
+    @Volatile var prefs: Prefs? = null
+
     fun touch(protocol: String, ip: String, name: String = ""): Session {
         val id = "$protocol@$ip"
         val now = System.currentTimeMillis()
@@ -44,7 +47,29 @@ object Sessions {
         Logger.i("session", "connected: $protocol from $ip${if (name.isNotEmpty()) " ($name)" else ""}")
         Events.emit("clientConnected", created.toJson())
         Events.emit("sessionsChanged", JSONObject().put("sessions", toJsonArray()))
+        checkMultiDevice(created)
         return created
+    }
+
+    /** AirScreen-style warning when a new device joins past the configured cap. */
+    private fun checkMultiDevice(justAdded: Session) {
+        val max = prefs?.multiDeviceMax ?: 0
+        if (max <= 0) return
+        val distinct = sessions.values.distinctBy { it.ip }.size
+        if (distinct > max) {
+            Logger.w(
+                "session",
+                "${distinct} devices active while the configured cap is $max; warning shown",
+            )
+            Events.emit(
+                "multiDeviceWarning",
+                JSONObject()
+                    .put("activeDevices", distinct)
+                    .put("maxDevices", max)
+                    .put("ip", justAdded.ip)
+                    .put("name", justAdded.name),
+            )
+        }
     }
 
     fun end(protocol: String, ip: String) {

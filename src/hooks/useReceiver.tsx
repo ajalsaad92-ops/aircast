@@ -103,6 +103,31 @@ export function ReceiverProvider({ children }: { children: ReactNode }) {
         await AirCast.addListener('recordingChanged', ({ recording }) =>
           setStatus((prev) => (prev ? { ...prev, recording } : prev)),
         ),
+        await AirCast.addListener('multiDeviceWarning', ({ activeDevices, maxDevices }) => {
+          showToast(
+            translate(
+              document.documentElement.lang === 'en' ? 'en' : 'ar',
+              'multi.multiDeviceWarning',
+              { activeDevices: String(activeDevices), maxDevices: String(maxDevices) },
+            ),
+          );
+        }),
+        await AirCast.addListener('networkGone', () => {
+          setStatus((prev) => (prev ? { ...prev, connected: false } : prev));
+          showToast(translate(langKey(), 'net.networkGone'));
+        }),
+        await AirCast.addListener('networkBack', () => {
+          setStatus((prev) => (prev ? { ...prev, connected: true } : prev));
+          showToast(translate(langKey(), 'net.networkBack'));
+        }),
+        await AirCast.addListener('decoderStall', ({ droppedFrames }) => {
+          showToast(
+            translate(langKey(), 'diag.decoderStall', { droppedFrames: String(droppedFrames) }),
+          );
+        }),
+        await AirCast.addListener('videoQuality', ({ width, height, fps }) =>
+          setStatus((prev) => (prev ? { ...prev, videoQuality: { width, height, fps } } : prev)),
+        ),
         await AirCast.addListener('log', (line) =>
           setLogs((prev) => [...prev, line].slice(-MAX_LOGS)),
         ),
@@ -129,6 +154,8 @@ export function ReceiverProvider({ children }: { children: ReactNode }) {
     (key: MessageKey, vars?: Record<string, string>) => translate(lang, key, vars),
     [lang],
   );
+
+  const langKey = useCallback((): Lang => lang, [lang]);
 
   const saveSettings = useCallback(async (patch: Partial<Settings>) => {
     setBusy(true);

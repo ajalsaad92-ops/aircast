@@ -2,7 +2,9 @@ package com.aircast.receiver.core
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.Build
 import java.net.Inet4Address
@@ -127,6 +129,51 @@ object Net {
         val v = java.util.UUID.randomUUID().toString()
         prefs.uuid = v
         return v
+    }
+
+    /**
+     * One-shot watcher: fires `networkGone` once when connectivity is lost and
+     * `networkBack` once when it returns, mirroring AirScreen's network-loss toast.
+     * Registered from the service; call [unregisterWatcher] on stop.
+     */
+    private var watcherCallback: ConnectivityManager.NetworkCallback? = null
+    private var watcherActive = false
+
+    fun registerWatcher(context: Context) {
+        if (watcherActive) return
+        watcherActive = true
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onLost(network: Network) {
+                Logger.w("net", "active network lost; senders may stall")
+                Events.emit("networkGone")
+            }
+            override fun onAvailable(network: Network) {
+                Logger.i("net", "network available again")
+                Events.emit("networkBack")
+            }
+        }
+        watcherCallback = cb
+        try {
+            cm.registerNetworkCallback(NetworkRequest.Builder().build(), cb)
+        } catch (e: SecurityException) {
+            Logger.w("net", "network callback not available: ${e.message}")
+        }
+    }
+
+    fun unregisterWatcher(context: Context) {
+        if (!watcherActive) return
+        watcherActive = false
+        watcherCallback?.let { cb ->
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            try {
+                cm?.unregisterNetworkCallback(cb)
+            } catch (_: Exception) {
+                /* already unregistered */
+            }
+        }
+        watcherCallback = null
     }
 
     fun defaultDeviceName(): String {

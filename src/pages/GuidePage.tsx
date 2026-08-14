@@ -81,7 +81,15 @@ export function GuidePage() {
         </p>
       </Panel>
 
-      <Panel title={t('settings.notSupported')} index={5}>
+      <Panel title={t('guide.security')} index={5}>
+        <ol className="steps">
+          <li>{t('guide.security.1')}</li>
+          <li>{t('guide.security.2')}</li>
+          <li>{t('guide.security.3')}</li>
+        </ol>
+      </Panel>
+
+      <Panel title={t('settings.notSupported')} index={6}>
         <p className="note note--muted" style={{ marginTop: 0 }}>
           {t('settings.notSupported.body')}
         </p>

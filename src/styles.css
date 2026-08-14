@@ -1242,3 +1242,33 @@ button {
   0%, 60% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ---- security: amber pending-led and on-screen code ----------------------- */
+.strip__led--amber {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber-glow), inset 0 0 2px rgba(255, 255, 255, 0.5);
+  animation: breathe 2.2s ease-in-out infinite;
+}
+.code--mono {
+  font-family: var(--font-mono);
+  color: var(--amber);
+  user-select: all;
+}
+
+.strip__ok {
+  margin-inline-start: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--mint);
+  text-transform: uppercase;
+}
+
+.strip__bad {
+  margin-inline-start: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--danger, #f87171);
+  text-transform: uppercase;
+}

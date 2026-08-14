@@ -70,6 +70,11 @@ export interface Status {
   activeMirrors: number;
   playback: PlaybackInfo;
   recording: boolean;
+  /** On-screen 4-digit code for the AirPlay `code` gate (empty when irrelevant). */
+  airplayCode: string;
+  pendingConnections: { pending: PendingConnection[] };
+  /** Live decoder shape while a video is playing. */
+  videoQuality: { width: number; height: number; fps: number } | null;
 }
 
 export interface Settings {
@@ -87,6 +92,30 @@ export interface Settings {
   httpPort: number;
   httpsPort: number;
   airplayPort: number;
+  /** AirPlay senders gate: off / code (on-screen) / password (PIN). */
+  airplaySecurityMode: 'off' | 'code' | 'password';
+  /** Cast senders gate: off / ask (accept-or-reject dialog with optional trust). */
+  castSecurityMode: 'off' | 'ask';
+  castTrustedPeers: string[];
+  /** 0 = no cap; otherwise a warning fires when more distinct devices are active. */
+  multiDeviceMax: number;
+  /** Off-screen behaviour: `off` = nothing, `canvas` = animated screensaver overlay. */
+  backgroundMode: 'off' | 'canvas';
+  /** Player orientation: `auto` / `horizontal` / `vertical`. */
+  forcedRotation: 'auto' | 'horizontal' | 'vertical';
+  /** Video output cap: `native` / `720p` / `1080p` / `4k`. */
+  screenResolution: 'native' | '720p' | '1080p' | '4k';
+  /** Keep decoding when the screen locks instead of stalling playback. */
+  keepPlaying: boolean;
+  /** Auto-lower mirror quality when frame stalls are detected. */
+  smartVideoQuality: boolean;
+}
+
+export interface PendingConnection {
+  protocol: string;
+  ip: string;
+  name: string;
+  createdAt: number;
 }
 
 export interface LogLine {
@@ -111,6 +140,21 @@ export interface AirCastPlugin {
   setSettings(settings: Partial<Settings>): Promise<Settings>;
   getNetworkInfo(): Promise<Pick<Status, 'ip' | 'ips' | 'ssid' | 'transport' | 'connected'>>;
   getTlsFingerprint(): Promise<{ fingerprint: string | null }>;
+
+  resolveConnection(options: {
+    peer: string;
+    accept: boolean;
+    trustAlways?: boolean;
+  }): Promise<Status>;
+  getPendingConnections(): Promise<{ pending: PendingConnection[] }>;
+  getTrustedPeers(): Promise<{ peers: string[] }>;
+  clearTrustedPeers(): Promise<Status>;
+  getAirPlayCode(options?: { refresh?: boolean }): Promise<{ code: string }>;
+  needsAirPlayCode(): Promise<{ needsCode: boolean }>;
+
+  overlayPermission(): Promise<{ granted: boolean }>;
+  requestOverlayPermission(): Promise<{ opened: boolean }>;
+  overlayStatus(): Promise<{ mode: string; granted: boolean; active: boolean }>;
 
   getLogs(): Promise<{ lines: LogLine[] }>;
   clearLogs(): Promise<void>;
@@ -142,6 +186,22 @@ export interface AirCastPlugin {
   addListener(
     eventName: 'sessionsChanged',
     listener: (data: { sessions: Session[] }) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'multiDeviceWarning',
+    listener: (data: { activeDevices: number; maxDevices: number; ip: string; name: string }) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'networkGone' | 'networkBack',
+    listener: () => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'videoQuality',
+    listener: (data: { width: number; height: number; fps: number }) => void,
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'decoderStall',
+    listener: (data: { droppedFrames: number }) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
     eventName: 'clientConnected' | 'clientDisconnected',
@@ -199,6 +259,15 @@ const webFallback: AirCastPlugin = (() => {
     httpPort: 8321,
     httpsPort: 8322,
     airplayPort: 7000,
+    airplaySecurityMode: 'off',
+    castSecurityMode: 'off',
+    castTrustedPeers: [],
+    multiDeviceMax: 0,
+    backgroundMode: 'off',
+    forcedRotation: 'auto',
+    screenResolution: 'native',
+    keepPlaying: false,
+    smartVideoQuality: false,
   };
   let running = true;
 
@@ -253,6 +322,9 @@ const webFallback: AirCastPlugin = (() => {
       muted: false,
     },
     recording: false,
+    airplayCode: '',
+    pendingConnections: { pending: [] },
+    videoQuality: null,
   });
 
   const noop = async () => undefined as never;
@@ -270,6 +342,15 @@ const webFallback: AirCastPlugin = (() => {
       return { ip: s.ip, ips: s.ips, ssid: s.ssid, transport: s.transport, connected: s.connected };
     },
     getTlsFingerprint: async () => ({ fingerprint: 'DE:V0:PR:EV:IE:W0' }),
+    resolveConnection: async () => status(),
+    getPendingConnections: async () => ({ pending: [] }),
+    getTrustedPeers: async () => ({ peers: [] }),
+    clearTrustedPeers: async () => status(),
+    getAirPlayCode: async () => ({ code: '0000' }),
+    needsAirPlayCode: async () => ({ needsCode: false }),
+    overlayPermission: async () => ({ granted: true }),
+    requestOverlayPermission: async () => ({ opened: false }),
+    overlayStatus: async () => ({ mode: 'off', granted: true, active: false }),
     getLogs: async () => ({
       lines: [
         { level: 'i' as const, line: '00:00:00 [service] dev preview — no native layer' },

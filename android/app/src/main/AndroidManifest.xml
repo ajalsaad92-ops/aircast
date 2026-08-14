@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission
@@ -54,6 +55,19 @@
             </intent-filter>
 
         </activity>
+
+        <!--
+          Background canvas overlay: drawn over the home screen when the receiver is on
+          and the app window is gone, like AirScreen's screensaver canvas — proves the
+          service is alive and blocks the device from sleeping the receivers away.
+          Requires SYSTEM_ALERT_WINDOW, requested lazily the first time it is enabled.
+        -->
+        <activity
+            android:name=".core.OverlayActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@style/AppTheme.Overlay" />
 
         <!-- Full-screen renderer used for DLNA / AirPlay video, audio and photo -->
         <activity

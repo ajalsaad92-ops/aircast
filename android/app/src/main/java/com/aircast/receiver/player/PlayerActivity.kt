@@ -11,6 +11,8 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
+import android.content.pm.ActivityInfo
+import androidx.media3.common.VideoSize
 import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -21,7 +23,9 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.aircast.receiver.R
+import com.aircast.receiver.core.Events
 import com.aircast.receiver.core.Logger
+import com.aircast.receiver.core.Prefs
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -46,6 +50,47 @@ class PlayerActivity : Activity(), Playback.Controller {
 
     private val hideOverlay = Runnable { overlay.visibility = View.GONE }
 
+    /**
+     * `forcedRotation`: `horizontal` locks landscape and `vertical` locks portrait, so a
+     * tablet/TV box can be forced into the orientation the content was designed for —
+     * the same knob AirScreen exposes under display settings.
+     */
+    private fun keepPlayingEnabled(): Boolean =
+        runCatching { Prefs.get(this).keepPlaying }.getOrDefault(false)
+
+    /**
+     * Caps the video surface at the chosen resolution so decoding happens at the capped
+     * size on slower boxes. `native` clears any previous cap.
+     */
+    private fun applyResolutionCap() {
+        val surfaceView = playerView.videoSurfaceView as? android.view.SurfaceView
+        val holder = surfaceView?.holder ?: return
+        val mode = runCatching { Prefs.get(this).screenResolution }.getOrDefault("native")
+        val cap = when (mode) {
+            "720p" -> 1280 to 720
+            "1080p" -> 1920 to 1080
+            "4k" -> 3840 to 2160
+            else -> 0 to 0
+        }
+        if (cap.first > 0) {
+            val (w, h) = cap
+            val vw = surfaceView.width.takeIf { it > 0 } ?: Int.MAX_VALUE
+            val vh = surfaceView.height.takeIf { it > 0 } ?: Int.MAX_VALUE
+            holder.setFixedSize(minOf(w, vw).coerceAtLeast(1), minOf(h, vh).coerceAtLeast(1))
+        } else {
+            runCatching { holder.setSizeFromLayout() }
+        }
+    }
+
+    private fun applyForcedRotation() {
+        val mode = runCatching { Prefs.get(this).forcedRotation }.getOrDefault("auto")
+        requestedOrientation = when (mode) {
+            "horizontal" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            "vertical" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        }
+    }
+
     private val progressTick = object : Runnable {
         override fun run() {
             player?.let { Playback.cachePosition(it.currentPosition, maxOf(it.duration, 0L)) }
@@ -57,6 +102,8 @@ class PlayerActivity : Activity(), Playback.Controller {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_player)
+
+        applyForcedRotation()
 
         playerView = findViewById(R.id.playerView)
         photoView = findViewById(R.id.photoView)
@@ -149,6 +196,7 @@ class PlayerActivity : Activity(), Playback.Controller {
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON),
             )
             .build()
+            .also { if (keepPlayingEnabled()) it.setWakeMode(androidx.media3.common.C.WAKE_MODE_LOCAL) }
             .also { created ->
                 created.addListener(playerListener)
                 playerView.player = created
@@ -169,6 +217,11 @@ class PlayerActivity : Activity(), Playback.Controller {
 
         exo.setMediaItem(item)
         exo.volume = if (Playback.muted) 0f else Playback.volume / 100f
+
+        // `screenResolution`: shrink the decoder output surface so the renderer never
+        // works above the chosen cap — the same role as AirScreen's resolution picker.
+        applyResolutionCap()
+
         exo.prepare()
         if (request.startPositionMs > 0) exo.seekTo(request.startPositionMs)
         exo.playWhenReady = true
@@ -220,6 +273,18 @@ class PlayerActivity : Activity(), Playback.Controller {
     }
 
     private val playerListener = object : Player.Listener {
+        override fun onVideoSizeChanged(size: androidx.media3.common.VideoSize) {
+            if (size == VideoSize.UNKNOWN) return
+            val fps = player?.let { (it.videoFormat?.frameRate ?: 0f) } ?: 0f
+            Events.emit(
+                "videoQuality",
+                org.json.JSONObject()
+                    .put("width", size.width)
+                    .put("height", size.height)
+                    .put("fps", fps),
+            )
+        }
+
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
                 Player.STATE_BUFFERING -> Playback.setState(Playback.State.TRANSITIONING)

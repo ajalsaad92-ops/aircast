@@ -7,6 +7,7 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.result.ActivityResult
+import com.aircast.receiver.core.AccessGate
 import com.aircast.receiver.core.Events
 import com.aircast.receiver.core.Logger
 import com.aircast.receiver.core.Net
@@ -92,6 +93,101 @@ class AirCastPlugin : Plugin() {
     private fun statusObject(): JSObject =
         JSObject.fromJSONObject(ReceiverService.status(appContext()))
             .put("recording", RecorderService.isRecording)
+            .put("airplayCode", AccessGate.currentAirPlayCode())
+            .put("pendingConnections", AccessGate.pendingConnectionsJson())
+
+    // ---- security (AirPlay gate / Cast security) ----------------------------
+
+    /** Accept / reject a held Cast connection; trustAlways pins it to the trusted set. */
+    @PluginMethod
+    fun resolveConnection(call: PluginCall) {
+        val peer = call.getString("peer") ?: return call.reject("peer is required")
+        val accept = call.getBoolean("accept", false) ?: false
+        val trustAlways = call.getBoolean("trustAlways", false) ?: false
+        AccessGate.castResolve(peer, accept, trustAlways)
+        call.resolve(statusObject())
+    }
+
+    @PluginMethod
+    fun getPendingConnections(call: PluginCall) =
+        call.resolve(JSObject.fromJSONObject(AccessGate.pendingConnectionsJson()))
+
+    @PluginMethod
+    fun getTrustedPeers(call: PluginCall) {
+        val arr = JSArray()
+        Prefs.get(appContext()).castTrustedPeers().forEach { arr.put(it) }
+        call.resolve(JSObject().put("peers", arr))
+    }
+
+    @PluginMethod
+    fun clearTrustedPeers(call: PluginCall) {
+        AccessGate.clearTrustedPeers()
+        call.resolve(statusObject())
+    }
+
+    /** The on-screen 4-digit code used to authorise AirPlay senders in `code` mode. */
+    @PluginMethod
+    fun getAirPlayCode(call: PluginCall) {
+        val refresh = call.getBoolean("refresh", false) ?: false
+        call.resolve(JSObject().put("code", AccessGate.currentAirPlayCode(refresh)))
+    }
+
+    /** Whether the on-screen code prompt is currently meaningful (code mode, no PIN). */
+    @PluginMethod
+    fun needsAirPlayCode(call: PluginCall) =
+        call.resolve(JSObject().put("needsCode", AccessGate.needsAirPlayCode()))
+
+    // ---- background overlay (screensaver canvas) ----------------------------
+
+    /** Whether the app may currently draw the screensaver canvas over the home screen. */
+    @PluginMethod
+    fun overlayPermission(call: PluginCall) {
+        val granted = try {
+            android.provider.Settings.canDrawOverlays(appContext())
+        } catch (_: Exception) {
+            false
+        }
+        call.resolve(JSObject().put("granted", granted))
+    }
+
+    /**
+     * Opens the system dialog that lets the user grant SYSTEM_ALERT_WINDOW so the
+     * background screensaver canvas can be shown while the receiver is on.
+     */
+    @PluginMethod
+    fun requestOverlayPermission(call: PluginCall) {
+        try {
+            val intent = Intent(
+                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${appContext().packageName}"),
+            ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            appContext().startActivity(intent)
+            call.resolve(JSObject().put("opened", true))
+        } catch (e: Exception) {
+            call.reject("could not open overlay settings: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun overlayStatus(call: PluginCall) {
+        val prefs = Prefs.get(appContext())
+        val granted = try {
+            android.provider.Settings.canDrawOverlays(appContext())
+        } catch (_: Exception) {
+            false
+        }
+        val active = try {
+            ReceiverService.instance != null && prefs.backgroundMode == "canvas" && granted
+        } catch (_: Exception) {
+            false
+        }
+        call.resolve(
+            JSObject()
+                .put("mode", prefs.backgroundMode)
+                .put("granted", granted)
+                .put("active", active),
+        )
+    }
 
     // ---- settings -----------------------------------------------------------
 
