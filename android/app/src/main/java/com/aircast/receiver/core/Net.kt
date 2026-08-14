@@ -156,8 +156,18 @@ object Net {
         }
         watcherCallback = cb
         try {
-            cm.registerNetworkCallback(NetworkRequest.Builder().build(), cb)
-        } catch (e: SecurityException) {
+            // Android 16 (API 36) rejects an unconstrained NetworkRequest with an
+            // IllegalArgumentException, and some OEM stacks throw SecurityException
+            // for overly broad callbacks — so ask for a normal internet-bearing
+            // network and swallow anything thrown.
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build()
+            cm.registerNetworkCallback(request, cb)
+        } catch (e: Exception) {
             Logger.w("net", "network callback not available: ${e.message}")
         }
     }

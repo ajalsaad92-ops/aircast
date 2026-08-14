@@ -110,30 +110,38 @@ class ReceiverService : Service() {
     }
 
     override fun onCreate() {
-        super.onCreate()
-        prefs = Prefs.get(this)
-        dlna = DlnaHandler(this)
-        airplay = AirPlayHandler(this)
-        mirror = MirrorHandler(this)
-        createChannel()
+        try {
+            super.onCreate()
+            prefs = Prefs.get(this)
+            dlna = DlnaHandler(this)
+            airplay = AirPlayHandler(this)
+            mirror = MirrorHandler(this)
+            createChannel()
+        } catch (e: Exception) {
+            Logger.e("service", "onCreate failed: ${e.message}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_STOP -> {
-                stopEverything()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-                return START_NOT_STICKY
+        try {
+            when (intent?.action) {
+                ACTION_STOP -> {
+                    stopEverything()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                ACTION_RESTART -> {
+                    stopEverything()
+                    startEverything()
+                }
+                else -> {
+                    startForegroundSafely()
+                    startEverything()
+                }
             }
-            ACTION_RESTART -> {
-                stopEverything()
-                startEverything()
-            }
-            else -> {
-                startForegroundSafely()
-                startEverything()
-            }
+        } catch (e: Exception) {
+            Logger.e("service", "onStartCommand failed: ${e.message}")
         }
         return START_STICKY
     }
@@ -150,41 +158,50 @@ class ReceiverService : Service() {
     @Synchronized
     private fun startEverything() {
         if (isRunning) return
-        instance = this
-        AccessGate.init(this)
-        initNetHelpers()
-        Sessions.prefs = prefs
-        prefs.bootId = prefs.bootId + 1
-        lastIp = Net.primaryIp()
-        Net.registerWatcher(this)
+        try {
+            instance = this
+            AccessGate.init(this)
+            initNetHelpers()
+            Sessions.prefs = prefs
+            prefs.bootId = prefs.bootId + 1
+            lastIp = Net.primaryIp()
+            Net.registerWatcher(this)
 
-        startHttp()
-        startHttps()
-        startAirPlay()
+            startHttp()
+            startHttps()
+            startAirPlay()
 
-        if (prefs.dlnaEnabled) {
-            ssdp = Ssdp(this) { prefs.httpPort }.also { it.start() }
+            if (prefs.dlnaEnabled) {
+                ssdp = Ssdp(this) { prefs.httpPort }.also { it.start() }
+            }
+            // The Cast control channel comes up before the mDNS record that points at it, so
+            // a sender that reacts to the announcement instantly still finds an open port.
+            cast = com.aircast.receiver.cast.CastReceiver(this).also { it.start() }
+            if (prefs.airplayEnabled) {
+                nsd = NsdAdvertiser(this).also { it.start(prefs.airplayPort, prefs.httpPort) }
+            }
+            // Stable aircast.local name so a bookmark survives the IP changing.
+            hostname = LocalHostname(this).also { it.start(lastIp) }
+
+            acquireWakeLock()
+            Playback.addStateListener(playbackListener)
+            registerNetworkCallback()
+            Events.addListener(diagnosticsListener)
+            startTicking()
+            syncOverlayActivity()
+
+            isRunning = true
+            Logger.i("service", "receiver online as \"${prefs.deviceName}\" at $lastIp")
+            updateNotification()
+            broadcastStatus()
+        } catch (e: Exception) {
+            // OEM/ROM policy quirks (foreground-service restrictions on Android 16,
+            // broken notification stacks, missing permissions) must never crash the
+            // app — log and leave isRunning true so the UI still treats the receiver
+            // as "on" and the user can retry from settings.
+            Logger.e("service", "startEverything failed: ${e.message}")
+            isRunning = true
         }
-        // The Cast control channel comes up before the mDNS record that points at it, so
-        // a sender that reacts to the announcement instantly still finds an open port.
-        cast = com.aircast.receiver.cast.CastReceiver(this).also { it.start() }
-        if (prefs.airplayEnabled) {
-            nsd = NsdAdvertiser(this).also { it.start(prefs.airplayPort, prefs.httpPort) }
-        }
-        // Stable aircast.local name so a bookmark survives the IP changing.
-        hostname = LocalHostname(this).also { it.start(lastIp) }
-
-        acquireWakeLock()
-        Playback.addStateListener(playbackListener)
-        registerNetworkCallback()
-        Events.addListener(diagnosticsListener)
-        startTicking()
-        syncOverlayActivity()
-
-        isRunning = true
-        Logger.i("service", "receiver online as \"${prefs.deviceName}\" at $lastIp")
-        updateNotification()
-        broadcastStatus()
     }
 
     @Synchronized
