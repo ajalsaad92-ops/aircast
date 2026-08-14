@@ -22,6 +22,16 @@ class MainActivity : BridgeActivity() {
         registerPlugin(AirCastPlugin::class.java)
         super.onCreate(savedInstanceState)
 
+        // Allow provisioning the Google Cast app id from adb without touching the UI:
+        //   adb shell am start -n com.aircast.receiver.debug/... --es cast_app_id 02898B6E
+        val provisioned = intent?.getStringExtra("cast_app_id")
+        if (!provisioned.isNullOrBlank()) {
+            val p = Prefs.get(this)
+            if (p.castAppId != provisioned.trim()) {
+                p.castAppId = provisioned.trim()
+                com.aircast.receiver.core.Logger.i("main", "cast app id provisioned via intent: ${p.castAppId}")
+            }
+        }
         // Opening the app is itself a signal that the user wants to be discoverable, so
         // the receiver comes up without making them press anything — matching how every
         // TV-box receiver behaves.
