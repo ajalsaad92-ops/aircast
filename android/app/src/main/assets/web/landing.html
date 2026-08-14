@@ -52,7 +52,11 @@
       <h1>AirCast</h1>
       <p class="sub" style="margin:0">
         <span lang-ar>هذا الجهاز يستقبل باسم</span><span lang-en>This receiver is</span>
-        <b>{{DEVICE_NAME}}</b> · <code>{{IP}}</code>
+        <b id="devName">{{DEVICE_NAME}}</b>
+        <button id="renameBtn" type="button" title="Rename"
+          style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;
+          padding:1px 7px;margin-inline-start:6px;cursor:pointer;font:inherit;font-size:.8em">✎</button>
+        · <code>{{IP}}</code>
       </p>
     </div>
   </header>
@@ -64,6 +68,15 @@
       <span lang-en>Chrome / Edge on Windows, Mac, Linux, Android — the browser asks you to trust the certificate once</span>
     </small>
   </a>
+
+  <div class="box" style="margin-bottom:22px;border-color:var(--accent)">
+    <h2>🔖 <span lang-ar>احفظ هذه الصفحة للوصول السريع</span><span lang-en>Bookmark this page</span></h2>
+    <p>
+      <span lang-ar>احفظ <b>هذا العنوان</b> (وليس صفحة البث نفسها). عند فتحه سيوجّهك دائمًا إلى بث آمن محدّث، فتنتهي مشكلة تبدّل http/https:</span>
+      <span lang-en>Save <b>this address</b> (not the cast page itself). Opening it always forwards you to the current secure cast, so the http/https mix-up goes away:</span>
+    </p>
+    <p style="margin-top:8px"><code>http://{{IP}}:{{HTTP_PORT}}/</code></p>
+  </div>
 
   <div class="grid">
     <div class="box">
@@ -115,6 +128,20 @@
     link.style.opacity = '.45';
     link.style.pointerEvents = 'none';
   }
+  var rb = document.getElementById('renameBtn');
+  if (rb) rb.addEventListener('click', async function () {
+    var cur = document.getElementById('devName').textContent.trim();
+    var v = prompt(document.documentElement.lang === 'en' ? 'New device name:' : 'اسم الجهاز الجديد:', cur);
+    if (!v) return;
+    try {
+      var r = await fetch('/rename', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: v })
+      });
+      var j = await r.json();
+      if (j && j.ok) document.getElementById('devName').textContent = j.name;
+    } catch (e) {}
+  });
 </script>
 </body>
 </html>

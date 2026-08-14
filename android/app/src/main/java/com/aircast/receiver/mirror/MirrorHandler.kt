@@ -26,6 +26,7 @@ class MirrorHandler(private val context: Context) {
         req.method == "OPTIONS" -> HttpResponse.empty(204)
         req.path == "/" || req.path == "/index.html" -> landing(req)
         req.path == "/cast" || req.path == "/sender" -> sender(req)
+        req.path == "/rename" -> rename(req)
         req.path == "/health" -> health()
         req.path.startsWith("/mirror/") -> signaling(req)
         else -> null
@@ -67,6 +68,26 @@ class MirrorHandler(private val context: Context) {
                 .replace("{{PIN_REQUIRED}}", if (prefs.pinCode.isNotEmpty()) "1" else "0")
                 .replace("{{PEER_ID}}", UUID.randomUUID().toString()),
         )
+    }
+
+    /**
+     * Rename the receiver from the landing page (the "name your device" step).
+     * Accepts POST {"name":"..."} or GET ?name=... . Persists and re-advertises.
+     */
+    private fun rename(req: HttpRequest): HttpResponse {
+        val name = when (req.method) {
+            "POST" -> try { JSONObject(req.bodyText()).optString("name") } catch (_: Exception) { "" }
+            else -> req.query["name"].orEmpty()
+        }.trim()
+        if (name.isEmpty()) return HttpResponse.json("{\"error\":\"empty\"}", 400)
+        prefs.deviceName = name
+        try {
+            com.aircast.receiver.service.ReceiverService.instance?.reconfigure()
+        } catch (e: Exception) {
+            Logger.w("http", "reconfigure after rename failed: ${e.message}")
+        }
+        Logger.i("http", "renamed receiver to \"${prefs.deviceName}\" from ${req.remoteIp}")
+        return HttpResponse.json(JSONObject().put("ok", true).put("name", prefs.deviceName).toString())
     }
 
     private fun health(): HttpResponse = HttpResponse.json(
