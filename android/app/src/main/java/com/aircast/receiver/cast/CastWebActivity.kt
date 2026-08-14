@@ -13,6 +13,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -120,6 +121,10 @@ class CastWebActivity : Activity() {
             isFocusable = true
             isFocusableInTouchMode = true
             requestFocus()
+
+            // Bridge so the injected video-detector can dismiss the native overlay
+            // the instant real casting video starts - clean, unobstructed picture.
+            addJavascriptInterface(WebBridge(), "AircastNative")
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -258,16 +263,13 @@ class CastWebActivity : Activity() {
 
         setContentView(fullRoot)
 
-        // Auto-hide overlay after 12 seconds, unless user is interacting
+        // Auto-hide the instruction overlay quickly so it never sits over the picture.
+        // It also disappears the moment real video plays (see WebBridge) or on tap.
         overlay.postDelayed({
-            // Don't hide if page hasn't loaded yet
             if (progress.visibility == View.GONE) {
-                overlay.animate().alpha(0f).setDuration(600).withEndAction {
-                    overlay.visibility = View.GONE
-                    overlay.alpha = 1f
-                }.start()
+                hideOverlayNow()
             }
-        }, 12000)
+        }, 6000)
 
         webView.loadUrl(url)
     }
@@ -339,8 +341,8 @@ class CastWebActivity : Activity() {
                 try{
                     console.log('[aircast] injecting video detector');
                     function hideOverlay(){
-                        // Try to find overlay via JS is not possible (native view), but we can log
-                        console.log('[aircast] video playing detected - should hide native overlay');
+                        console.log('[aircast] video playing detected - hiding native overlay');
+                        try{ if(window.AircastNative && AircastNative.onVideoPlaying){ AircastNative.onVideoPlaying(); } }catch(e){ console.log('[aircast] bridge error '+e); }
                     }
                     var check = setInterval(function(){
                         var vids = document.querySelectorAll('video');
@@ -361,6 +363,26 @@ class CastWebActivity : Activity() {
         try {
             webView.evaluateJavascript(js, null)
         } catch (_: Exception) {}
+    }
+
+    /** Fade the instruction overlay out and remove it. Safe to call repeatedly. */
+    private fun hideOverlayNow() {
+        runOnUiThread {
+            if (::overlay.isInitialized && overlay.visibility == View.VISIBLE) {
+                overlay.animate().alpha(0f).setDuration(300).withEndAction {
+                    overlay.visibility = View.GONE
+                    overlay.alpha = 1f
+                }.start()
+            }
+        }
+    }
+
+    /** JS -> native bridge. The injected detector calls this when casting video starts. */
+    inner class WebBridge {
+        @JavascriptInterface
+        fun onVideoPlaying() {
+            hideOverlayNow()
+        }
     }
 
     private fun showOverlayWithError(msg: String) {

@@ -14,7 +14,20 @@ export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [full, setFull] = useState(false);
+  const [showChrome, setShowChrome] = useState(true);
   const mirrorUrl = status?.mirrorUrl ?? '';
+
+  // In fullscreen the picture must be clean. Show the Live badge + hint briefly,
+  // then fade them so nothing from the app sits over the cast.
+  useEffect(() => {
+    if (!full) {
+      setShowChrome(true);
+      return;
+    }
+    setShowChrome(true);
+    const id = window.setTimeout(() => setShowChrome(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [full]);
 
   // `full` is a dependency because switching layouts unmounts the old <video>.
   useEffect(() => {
@@ -83,11 +96,15 @@ export function MirrorPage() {
         }}
       >
         <video ref={videoRef} autoPlay playsInline />
-        <span className="livetag">
-          <span className="livetag__dot" />
-          {t('mirror.live')} · {session?.name}
-        </span>
-        <span className="fullstage__hint">{t('mirror.exitFullscreen')}</span>
+        {showChrome && (
+          <>
+            <span className="livetag">
+              <span className="livetag__dot" />
+              {t('mirror.live')} · {session?.name}
+            </span>
+            <span className="fullstage__hint">{t('mirror.exitFullscreen')}</span>
+          </>
+        )}
       </div>
     );
   }
