@@ -115,6 +115,13 @@ export interface Settings {
   /** Google Cast custom-receiver app id (registered in the Cast developer console). */
   castAppId: string;
   castEnabled: boolean;
+  /**
+   * Cast device-auth bypass (AirScreen-style): when the receiver holds no
+   * usable replay certificate, it still answers DEVICE_AUTH challenges with
+   * a minimal valid response so bypass-mode senders (Meta Quest, personal
+   * receivers) can connect.
+   */
+  castBypassAuth: boolean;
 }
 
 export interface PendingConnection {
@@ -305,6 +312,7 @@ const webFallback: AirCastPlugin = (() => {
       '[{"name":"NAS","host":"192.168.1.10","share":"Movies","user":"","pass":"","base":"/"}]',
     castAppId: '',
     castEnabled: true,
+    castBypassAuth: false,
   };
   let running = true;
 

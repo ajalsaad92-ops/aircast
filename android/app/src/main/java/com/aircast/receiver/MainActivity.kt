@@ -32,6 +32,28 @@ class MainActivity : BridgeActivity() {
                 com.aircast.receiver.core.Logger.i("main", "cast app id provisioned via intent: ${p.castAppId}")
             }
         }
+        // Provision device-auth bypass from adb so Quest 3 (Chromecast mode with
+        // Bypass Device Auth) can connect without touching the UI:
+        //   adb shell am start -n com.aircast.receiver.debug/... --ez cast_bypass_auth true
+        val bypassExtra = intent?.getBooleanExtra("cast_bypass_auth", false)
+        if (intent?.hasExtra("cast_bypass_auth") == true) {
+            val p = Prefs.get(this)
+            if (p.castBypassAuth != bypassExtra) {
+                p.castBypassAuth = bypassExtra ?: false
+                com.aircast.receiver.core.Logger.i("main", "cast bypass auth provisioned via intent: ${p.castBypassAuth}")
+            }
+        }
+        // Same provisioning path for the advertised device name so it shows
+        // correctly in cast lists without touching the UI:
+        //   adb shell am start -n ... --es device_name "AirCast (Galaxy S24)"
+        val provisionedName = intent?.getStringExtra("device_name")
+        if (!provisionedName.isNullOrBlank()) {
+            val p = Prefs.get(this)
+            if (p.deviceName != provisionedName.trim()) {
+                p.deviceName = provisionedName.trim()
+                com.aircast.receiver.core.Logger.i("main", "device name provisioned via intent: ${p.deviceName}")
+            }
+        }
         // Opening the app is itself a signal that the user wants to be discoverable, so
         // the receiver comes up without making them press anything — matching how every
         // TV-box receiver behaves.

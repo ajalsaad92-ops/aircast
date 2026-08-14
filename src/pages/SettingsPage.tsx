@@ -567,6 +567,22 @@ function NetworkPanel() {
         </div>
       </Field>
 
+      <Field label={t('settings.castBypassAuth')} hint={t('settings.castBypassAuth') + ' — ' + t('settings.castBypassAuth.hint')}>
+        <div className="strip" data-on={settings.castBypassAuth}>
+          <span className="strip__led" />
+          <div className="strip__text">
+            <div className="strip__name">{t('settings.castBypassAuth')}</div>
+            <div className="strip__desc">{settings.castBypassAuth ? t('proto.on') : t('proto.off')}</div>
+          </div>
+          <Switch
+            checked={settings.castBypassAuth}
+            label={t('settings.castBypassAuth')}
+            disabled={busy}
+            onChange={(next) => void saveSettings({ castBypassAuth: next })}
+          />
+        </div>
+      </Field>
+
       <Field label={t('settings.castAppId')} hint={t('settings.castAppId.hint')}>
         <input
           className="input input--mono"

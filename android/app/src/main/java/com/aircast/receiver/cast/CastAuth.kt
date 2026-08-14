@@ -145,6 +145,19 @@ AAAAAAAAAAAAAAAA
     // For current date we would need signature at index 547, but we use the example one for demo
     // In private build, replace SIGNATURE_B64 with signature for today from shanocast table
 
+    /**
+     * Minimal valid DEVICE_AUTH reply for senders configured with device-auth bypass
+     * (Meta Quest `Bypass Device Auth`, AirScreen personal receivers, etc.).
+     *
+     * Protobuf encoding:
+     *   DeviceAuthMessage { response (field 2): AuthResponse { } }
+     *   = field 2, wire type 2 (length-delimited), length 0
+     *   = [0x12, 0x00]
+     * An empty AuthResponse signals "no credentials available" and lets bypass-mode
+     * senders proceed without a replayed signature.
+     */
+    val emptyAuthResponseBytes: ByteArray = byteArrayOf(0x12.toByte(), 0x00)
+
     fun createTlsSocketFactory(): SSLServerSocketFactory? {
         return try {
             // Ensure BC provider

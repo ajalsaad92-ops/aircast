@@ -120,6 +120,17 @@ class Prefs private constructor(context: Context) {
         get() = sp.getBoolean(K_CAST_ON, true)
         set(v) = sp.edit().putBoolean(K_CAST_ON, v).apply()
 
+    /**
+     * Cast device-auth bypass — mirrors AirScreen's behaviour for personal receivers.
+     * When `true`, the receiver does not rely on the DEVICE_AUTH replay certificate to
+     * satisfy strict senders (such as Meta Quest Chromecast mode without bypass).
+     * Senders that proceed without verifying the certificate will work as-is; senders
+     * that demand a valid chain are handled by CastAuth's embedded replay tuple.
+     */
+    var castBypassAuth: Boolean
+        get() = sp.getBoolean(K_CAST_BYPASS, false)
+        set(v) = sp.edit().putBoolean(K_CAST_BYPASS, v).apply()
+
     var autoStart: Boolean
         get() = sp.getBoolean(K_AUTOSTART, true)
         set(v) = sp.edit().putBoolean(K_AUTOSTART, v).apply()
@@ -197,6 +208,7 @@ class Prefs private constructor(context: Context) {
         .put("smbServers", smbServers)
         .put("castAppId", castAppId)
         .put("castEnabled", castEnabled)
+        .put("castBypassAuth", castBypassAuth)
 
     fun applyJson(o: JSONObject) {
         if (o.has("deviceName")) deviceName = o.optString("deviceName")
@@ -221,6 +233,7 @@ class Prefs private constructor(context: Context) {
         if (o.has("smbServers")) smbServers = o.optString("smbServers", "[]")
         if (o.has("castAppId")) castAppId = o.optString("castAppId", "")
         if (o.has("castEnabled")) castEnabled = o.optBoolean("castEnabled", true)
+        if (o.has("castBypassAuth")) castBypassAuth = o.optBoolean("castBypassAuth", false)
     }
 
     companion object {
@@ -254,6 +267,7 @@ class Prefs private constructor(context: Context) {
         private const val K_SMB_SERVERS = "smb_servers"
         private const val K_CAST_APP_ID = "cast_app_id"
         private const val K_CAST_ON = "cast_on"
+        private const val K_CAST_BYPASS = "cast_bypass_auth"
         private const val K_DEVICE_ID = "device_id_hex"
         private const val K_UUID = "uuid"
         private const val K_BOOT_ID = "boot_id"

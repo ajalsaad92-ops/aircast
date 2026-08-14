@@ -208,8 +208,8 @@ class CastReceiver(private val context: Context) {
                 Logger.w(
                     "cast",
                     "device auth challenge from $peer (${message.payloadBinary?.size ?: 0} bytes) - no Google device certificate. " +
-                        "Quest Chromecast mode will fail here (expected). Use Camera -> Cast -> Computer via oculus.com/casting screen instead. " +
-                        "For full Cast: need replay certs (Shanocast method) or enable Bypass Device Auth on sender via adb.",
+                        "If 'Bypass Device Auth' is enabled on this receiver (castBypassAuth=true), we answer with an empty response " +
+                        "so bypass-mode senders such as Meta Quest 3 proceed. Otherwise we stay silent.",
                 )
                 handleDeviceAuth(message, out, peer)
             }
@@ -236,12 +236,19 @@ class CastReceiver(private val context: Context) {
             } catch (_: Exception) {}
         }
         Logger.i("cast", "device auth challenge from $peer (${payloadBytes?.size ?: 0} bytes) - responding with embedded cert")
-        // Build AuthResponse using embedded certs
+        // Build AuthResponse using embedded certs. When the replay tuple is absent or
+        // stale, senders configured with device-auth bypass (Meta Quest `Bypass Device
+        // Auth`, AirScreen-style receivers) still proceed if we answer with an empty
+        // `response` field — silence was the honest but fatal move before.
         val responseBytes = CastAuth.buildAuthResponse()
         if (responseBytes.isEmpty()) {
-            Logger.w("cast", "failed to build auth response, sending empty to allow bypass mode to proceed")
+            Logger.w("cast", "failed to build auth response, sending empty response to allow bypass mode to proceed")
+        }
+        if (responseBytes.isEmpty() && !prefs.castBypassAuth) {
+            // Nothing to prove — keep the honest silence and let the sender decide.
             return
         }
+        val finalBytes = if (responseBytes.isNotEmpty()) responseBytes else CastAuth.emptyAuthResponseBytes
         try {
             // DeviceAuthMessage with response field
             val msg = CastV2.Message(
@@ -249,10 +256,10 @@ class CastReceiver(private val context: Context) {
                 destinationId = message.sourceId.ifEmpty { "sender-0" },
                 namespace = CastV2.NS_DEVICEAUTH,
                 payloadType = CastV2.PAYLOAD_BINARY,
-                payloadBinary = responseBytes
+                payloadBinary = finalBytes
             )
             CastV2.write(out, msg)
-            Logger.i("cast", "sent device auth response to $peer (${responseBytes.size} bytes) - if Quest has Bypass enabled, it will proceed")
+            Logger.i("cast", "sent device auth response to $peer (${finalBytes.size} bytes) - if Quest has Bypass enabled, it will proceed")
         } catch (e: Exception) {
             Logger.e("cast", "auth response failed: ${e.message}")
         }
