@@ -122,22 +122,38 @@ class HttpServer(
     fun start() {
         if (running.get()) return
         val factory = serverSocketFactory ?: ServerSocketFactory.getDefault()
-        val ss = factory.createServerSocket()
-        ss.reuseAddress = true
-        ss.bind(InetSocketAddress(port), 64)
-        serverSocket = ss
-        running.set(true)
-        acceptThread = Thread({ acceptLoop(ss) }, "http-$label-accept").apply {
-            isDaemon = true
-            start()
+        var lastError: IOException? = null
+        // A restart rebinds the same port moments after the old socket closed; the OS
+        // may still be releasing it, so retry a few times before giving up.
+        repeat(6) { attempt ->
+            try {
+                val ss = factory.createServerSocket()
+                ss.reuseAddress = true
+                ss.bind(InetSocketAddress(port), 64)
+                serverSocket = ss
+                running.set(true)
+                acceptThread = Thread({ acceptLoop(ss) }, "http-$label-accept").apply {
+                    isDaemon = true
+                    start()
+                }
+                Logger.i(label, "listening on port ${ss.localPort}${if (secure) " (TLS)" else ""}")
+                return
+            } catch (e: java.net.BindException) {
+                lastError = e
+                if (attempt < 5) try { Thread.sleep(200) } catch (_: InterruptedException) {}
+            }
         }
-        Logger.i(label, "listening on port ${ss.localPort}${if (secure) " (TLS)" else ""}")
+        throw lastError ?: IOException("could not bind $label port $port")
     }
 
     fun stop() {
         if (!running.getAndSet(false)) return
         try { serverSocket?.close() } catch (_: Exception) {}
         serverSocket = null
+        // Wait for the accept thread to unblock and the OS to release the port,
+        // so an immediate restart (settings change) can rebind without EADDRINUSE.
+        try { acceptThread?.join(700) } catch (_: Exception) {}
+        acceptThread = null
         pool.shutdownNow()
         Logger.i(label, "stopped")
     }

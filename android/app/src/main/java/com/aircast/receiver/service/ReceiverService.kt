@@ -109,6 +109,7 @@ class ReceiverService : Service() {
 
     // ---- lifecycle ----------------------------------------------------------
 
+    @Synchronized
     private fun startEverything() {
         if (isRunning) return
         instance = this
@@ -140,6 +141,7 @@ class ReceiverService : Service() {
         broadcastStatus()
     }
 
+    @Synchronized
     private fun stopEverything() {
         if (!isRunning && httpServer == null) return
         isRunning = false
@@ -167,6 +169,7 @@ class ReceiverService : Service() {
     }
 
     /** Applies changed settings without dropping active playback where possible. */
+    @Synchronized
     fun reconfigure() {
         Logger.i("service", "applying new settings")
         stopEverything()
