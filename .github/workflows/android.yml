@@ -56,28 +56,53 @@ jobs:
           cd android
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload debug APK
+      - name: Name the APK for this build
+        id: apk
+        run: |
+          VER=$(grep -m1 'versionName ' android/app/build.gradle | sed -E 's/.*"([^"]+)".*/\1/')
+          SHA=$(git rev-parse --short HEAD)
+          NAME="aircast-v${VER}-b${{ github.run_number }}-${SHA}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "Built $NAME"
+
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aircast-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.name }}
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
-      # Publish the debug APK to a rolling pre-release so it has a stable,
-      # one-click download link on every push to main (no login / unzip needed).
-      - name: Publish rolling debug release
+      # A retained, uniquely-named release per build — keeps every version's APK.
+      - name: Publish per-build release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: AirCast v${{ steps.apk.outputs.ver }} · build #${{ github.run_number }}
+          body: |
+            Debug build of commit ${{ github.sha }}.
+          prerelease: true
+          fail_on_unmatched_files: false
+          files: ${{ steps.apk.outputs.name }}
+
+      # Rolling "latest" link for convenience: keeps a stable app-debug.apk URL
+      # plus the versioned copy for this build.
+      - name: Refresh debug-latest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: debug-latest
           name: AirCast — latest debug APK
           body: |
-            Automatic debug build of the latest commit on `main`.
-            Commit: ${{ github.sha }}
+            Newest debug build. Version v${{ steps.apk.outputs.ver }}, build #${{ github.run_number }}, commit ${{ github.sha }}.
           prerelease: true
           fail_on_unmatched_files: false
-          files: android/app/build/outputs/apk/debug/*.apk
+          files: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            ${{ steps.apk.outputs.name }}
 
   release:
     name: Signed release
