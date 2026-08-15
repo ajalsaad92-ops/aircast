@@ -246,6 +246,19 @@ const dict = {
     'settings.notSupported.body':
       'استقبال Google Cast يتطلّب ترخيصاً واعتماداً من Google، و Miracast لا يوفّر أندرويد واجهة برمجية لاستقباله منذ الإصدار 8. التفاصيل في ملف README.',
 
+    'as.shareWith': 'شارك المحتوى الخاص بك مع',
+    'as.onAir': 'يعمل',
+    'as.ports': 'المنافذ',
+    'as.clients': 'الأجهزة المتصلة',
+    'as.enabled': 'مفعّل',
+    'as.off': 'معطّل',
+    'as.listening': 'يستمع · 7000',
+    'as.rendererOn': 'المشغّل نشط',
+    'as.mirror': 'مشاركة الشاشة',
+    'as.waitingDevice': 'بانتظار جهاز يبدأ المشاركة',
+    'as.qrUnavailable': '—',
+    'as.protocols': 'البروتوكولات',
+
     'common.on': 'تشغيل',
     'common.off': 'إيقاف',
     'common.close': 'إغلاق',
@@ -487,6 +500,19 @@ const dict = {
     'settings.notSupported': 'Not supported',
     'settings.notSupported.body':
       'A Google Cast receiver requires Google certification and licensing, and Android has exposed no Miracast sink API since version 8. Details are in the README.',
+
+    'as.shareWith': 'Please share your content with',
+    'as.onAir': 'ON AIR',
+    'as.ports': 'Ports',
+    'as.clients': 'Clients',
+    'as.enabled': 'Enabled',
+    'as.off': 'Off',
+    'as.listening': 'Listening · 7000',
+    'as.rendererOn': 'Renderer active',
+    'as.mirror': 'Screen Mirror',
+    'as.waitingDevice': 'Waiting for a device to start sharing',
+    'as.qrUnavailable': '—',
+    'as.protocols': 'Protocols',
 
     'common.on': 'On',
     'common.off': 'Off',
