@@ -235,20 +235,29 @@ class CastReceiver(private val context: Context) {
                 Logger.i("cast", "device auth challenge from $peer nonce=${challenge?.take(10)}... (${payloadBytes.size} bytes)")
             } catch (_: Exception) {}
         }
-        Logger.i("cast", "device auth challenge from $peer (${payloadBytes?.size ?: 0} bytes) - responding with embedded cert")
         // Build AuthResponse using embedded certs. When the replay tuple is absent or
         // stale, senders configured with device-auth bypass (Meta Quest `Bypass Device
         // Auth`, AirScreen-style receivers) still proceed if we answer with an empty
         // `response` field — silence was the honest but fatal move before.
         val responseBytes = CastAuth.buildAuthResponse()
         if (responseBytes.isEmpty()) {
-            Logger.w("cast", "failed to build auth response, sending empty response to allow bypass mode to proceed")
+            Logger.w("cast", "device auth challenge from $peer (${payloadBytes?.size ?: 0} bytes) - no embedded cert to replay")
+        } else {
+            Logger.i("cast", "device auth challenge from $peer (${payloadBytes?.size ?: 0} bytes) - embedded cert available (${responseBytes.size} bytes)")
         }
         if (responseBytes.isEmpty() && !prefs.castBypassAuth) {
             // Nothing to prove — keep the honest silence and let the sender decide.
             return
         }
-        val finalBytes = if (responseBytes.isNotEmpty()) responseBytes else CastAuth.emptyAuthResponseBytes
+        // When the operator explicitly enables the bypass, answer with an empty
+        // AuthResponse (well-formed but containing no certificate) so bypass-mode
+        // senders such as Meta Quest 3 proceed instead of hanging up.
+        val finalBytes = if (prefs.castBypassAuth) {
+            Logger.i("cast", "device auth bypass enabled — sending empty AuthResponse instead of embedded cert")
+            CastAuth.emptyAuthResponseBytes
+        } else {
+            responseBytes
+        }
         try {
             // DeviceAuthMessage with response field
             val msg = CastV2.Message(

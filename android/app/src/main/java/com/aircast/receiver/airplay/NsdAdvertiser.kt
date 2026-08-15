@@ -66,12 +66,14 @@ class NsdAdvertiser(private val context: Context) {
             attributes = mapOf(
                 "id" to castDeviceId(),
                 "ve" to "05",
-                "md" to "AirCast",
+                "md" to "AirCast Receiver",
                 "ic" to "/setup/icon.png",
                 "fn" to name,
-                "ca" to "4101",
+                "ca" to "2136",
                 "st" to "0",
+                "rm" to name,
                 "rs" to "",
+                "nf" to "0",
             ),
         )
 

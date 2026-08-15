@@ -18,6 +18,7 @@ import com.aircast.receiver.MainActivity
 import com.aircast.receiver.R
 import com.aircast.receiver.airplay.AirPlayHandler
 import com.aircast.receiver.airplay.LocalHostname
+import com.aircast.receiver.airplay.LiteMdnsResponder
 import com.aircast.receiver.airplay.NsdAdvertiser
 import com.aircast.receiver.core.AccessGate
 import com.aircast.receiver.core.Events
@@ -75,6 +76,7 @@ class ReceiverService : Service() {
     private var airplayServer: HttpServer? = null
     private var ssdp: Ssdp? = null
     private var nsd: NsdAdvertiser? = null
+    private var mdnsResponder: LiteMdnsResponder? = null
     private var hostname: LocalHostname? = null
     private var cast: com.aircast.receiver.cast.CastReceiver? = null
 
@@ -182,6 +184,10 @@ class ReceiverService : Service() {
             }
             // Stable aircast.local name so a bookmark survives the IP changing.
             hostname = LocalHostname(this).also { it.start(lastIp) }
+            // Direct multicast responder: some OEM stacks (Samsung, Android TV) advertise
+            // via NsdManager but never answer LAN queries, so senders (Quest/Chrome/iOS)
+            // never see the device. This answers them itself over mDNS.
+            mdnsResponder = LiteMdnsResponder(this).also { it.start(prefs.airplayPort, prefs.httpPort) }
 
             acquireWakeLock()
             Playback.addStateListener(playbackListener)
@@ -219,6 +225,7 @@ class ReceiverService : Service() {
 
         ssdp?.stop(); ssdp = null
         nsd?.stop(); nsd = null
+        mdnsResponder?.stop(); mdnsResponder = null
         hostname?.stop(); hostname = null
         cast?.stop(); cast = null
         httpServer?.stop(); httpServer = null

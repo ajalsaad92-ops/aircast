@@ -68,4 +68,34 @@ class MainActivity : BridgeActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // SingleTask launch: when the app is already running, delivery lands here
+        // instead of onCreate — so re-run the provisioning logic.
+        val provisioned = intent.getStringExtra("cast_app_id")
+        if (!provisioned.isNullOrBlank()) {
+            val p = Prefs.get(this)
+            if (p.castAppId != provisioned.trim()) {
+                p.castAppId = provisioned.trim()
+                com.aircast.receiver.core.Logger.i("main", "cast app id provisioned via intent (new): ${p.castAppId}")
+            }
+        }
+        if (intent.hasExtra("cast_bypass_auth")) {
+            val p = Prefs.get(this)
+            if (p.castBypassAuth != intent.getBooleanExtra("cast_bypass_auth", false)) {
+                p.castBypassAuth = intent.getBooleanExtra("cast_bypass_auth", false)
+                com.aircast.receiver.core.Logger.i("main", "cast bypass auth provisioned via intent (new): ${p.castBypassAuth}")
+            }
+        }
+        val provisionedName = intent.getStringExtra("device_name")
+        if (!provisionedName.isNullOrBlank()) {
+            val p = Prefs.get(this)
+            if (p.deviceName != provisionedName.trim()) {
+                p.deviceName = provisionedName.trim()
+                com.aircast.receiver.core.Logger.i("main", "device name provisioned via intent (new): ${p.deviceName}")
+            }
+        }
+    }
 }
