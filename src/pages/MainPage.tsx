@@ -233,6 +233,32 @@ export function MainPage() {
             { k: 'CLIENTS', v: localiseDigits(status?.sessions.length ?? 0, lang) },
           ]}
         />
+
+        {/* AirScreen-style protocol cards */}
+        <div className="protos">
+          <div className="proto">
+            <span className={`proto__dot${castEnabled ? ' proto__dot--on' : ''}`} />
+            <span className="proto__name">Cast</span>
+            <span className="proto__state">
+              {castEnabled ? (castAppId ? `Ready · ${castAppId}` : 'Enabled · no App ID') : 'Off'}
+            </span>
+          </div>
+          <div className="proto">
+            <span className="proto__dot proto__dot--on" />
+            <span className="proto__name">AirPlay</span>
+            <span className="proto__state">{running ? 'Listening · port 7000' : 'Off'}</span>
+          </div>
+          <div className="proto">
+            <span className="proto__dot proto__dot--on" />
+            <span className="proto__name">DLNA</span>
+            <span className="proto__state">{running ? 'Renderer active' : 'Off'}</span>
+          </div>
+          <div className="proto">
+            <span className={`proto__dot${mirrorEnabled ? ' proto__dot--on' : ''}`} />
+            <span className="proto__name">Screen Mirror</span>
+            <span className="proto__state">{mirrorEnabled ? t('mirror.waiting') : 'Off'}</span>
+          </div>
+        </div>
       </Panel>
 
       {mirrorEnabled && (

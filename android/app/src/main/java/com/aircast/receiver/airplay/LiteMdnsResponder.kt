@@ -89,23 +89,25 @@ class LiteMdnsResponder(private val context: Context) {
             val castId = (uuid32 + uuid32).take(32).lowercase()
             val name = prefs.deviceName
 
+            // Records cloned from AirScreen v2.16.1 native mdns (libmdns.so) for
+            // exact Meta Quest / Google Cast compatibility.
             val records = listOf(
                 TypeRecord("_googlecast._tcp", "_googlecast._tcp.local.", name, CastV2.PORT, mapOf(
-                    "id" to castId, "ve" to "05", "md" to "AirCast Receiver",
-                    "ic" to "/setup/icon.png", "fn" to name, "ca" to "2136",
+                    "id" to castId, "ve" to "05", "md" to "AirScreen",
+                    "ic" to "/setup/icon.png", "fn" to name, "ca" to "4101",
                     "st" to "0", "rm" to name, "rs" to "", "nf" to "0",
                 )),
                 TypeRecord("_airplay._tcp", "_airplay._tcp.local.", name, airplayPort, mapOf(
                     "deviceid" to deviceId.chunked(2).joinToString(":"),
-                    "features" to "0x77", "model" to "AppleTV3,2",
-                    "srcvers" to "220.68", "vv" to "2", "flags" to "0x4",
-                    "pk" to "", "pi" to Net.uuid(context),
+                    "features" to "0x5A7FFFF7,0xE", "model" to "AppleTV3,1",
+                    "srcvers" to "220.68", "flags" to "0x24c",
+                    "pk" to "0,1,2,3", "pi" to Net.uuid(context),
                 )),
                 TypeRecord("_raop._tcp", "_raop._tcp.local.", "$deviceId@$name", airplayPort, mapOf(
-                    "txtvers" to "1", "ch" to "2", "cn" to "0,1", "et" to "0,1",
+                    "txtvers" to "1", "ch" to "2", "cn" to "0,1", "et" to "0,1,2",
                     "sv" to "false", "da" to "true", "sr" to "44100", "ss" to "16",
-                    "pw" to "false", "vn" to "3", "tp" to "UDP", "vs" to "220.68",
-                    "am" to "AppleTV3,2", "sf" to "0x4",
+                    "pw" to "0,3,5", "vn" to "3", "tp" to "UDP", "vs" to "220.68",
+                    "am" to "AppleTV3,1", "sf" to "0x4",
                 )),
                 TypeRecord("_aircast._tcp", "_aircast._tcp.local.", name, httpPort, mapOf(
                     "ver" to "1.0.0", "id" to deviceId,

@@ -533,6 +533,54 @@ button {
   color: var(--amber);
 }
 
+/* --------------------------------------------------------- AirScreen-style protocol cards -- */
+
+.protos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.proto {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--chassis);
+  border: 1px solid var(--seam);
+  border-radius: var(--r-sm);
+  padding: 12px 13px;
+}
+
+.proto__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--ink-3);
+}
+
+.proto__dot--on {
+  background: #37d67a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #37d67a 22%, transparent);
+}
+
+.proto__name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.proto__state {
+  margin-left: auto;
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
 /* -------------------------------------------------------- channel strip -- */
 
 .strip {
