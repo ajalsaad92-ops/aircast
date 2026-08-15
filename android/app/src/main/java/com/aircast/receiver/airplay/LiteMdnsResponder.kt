@@ -99,7 +99,9 @@ class LiteMdnsResponder(private val context: Context) {
                 )),
                 TypeRecord("_airplay._tcp", "_airplay._tcp.local.", name, airplayPort, mapOf(
                     "deviceid" to deviceId.chunked(2).joinToString(":"),
-                    "features" to "0x5A7FFFF7,0xE", "model" to "AppleTV3,1",
+                    // features=61647880183 must match the /server-info plist so Apple
+                    // senders accept the receiver for both video and audio streaming.
+                    "features" to "61647880183", "model" to "AppleTV3,1",
                     "srcvers" to "220.68", "flags" to "0x24c",
                     "pk" to "0,1,2,3", "pi" to Net.uuid(context),
                 )),

@@ -109,6 +109,8 @@ class HttpServer(
     private val label: String,
     private val secure: Boolean = false,
     private val serverSocketFactory: ServerSocketFactory? = null,
+    /** Per-sender server token — "AirTunes/220.68" on the AirPlay port, matching AirScreen v2.16.1 h9/c. */
+    private val serverToken: String? = null,
     private val handler: HttpHandler,
 ) {
     private var serverSocket: ServerSocket? = null
@@ -287,7 +289,11 @@ class HttpServer(
             if (declaredLength >= 0) sb.append("Content-Length: ").append(declaredLength).append("\r\n")
         }
         sb.append("Date: ").append(httpDate()).append("\r\n")
-        sb.append("Server: ").append(SERVER_TOKEN).append("\r\n")
+        sb.append("Server: ").append(serverToken ?: SERVER_TOKEN).append("\r\n")
+        // AirScreen v2.16.1 h9/c echoes the request sequence number back on every
+        // response; Apple senders treat a missing CSeq on /play and friends as fatal.
+        val cseq = req.header("cseq")
+        if (!cseq.isNullOrBlank()) sb.append("CSeq: ").append(cseq).append("\r\n")
         // The React UI and the sender page both call this server cross-origin.
         sb.append("Access-Control-Allow-Origin: *\r\n")
         sb.append("Access-Control-Allow-Headers: *\r\n")

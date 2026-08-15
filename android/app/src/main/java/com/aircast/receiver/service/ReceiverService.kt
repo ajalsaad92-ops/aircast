@@ -325,7 +325,9 @@ class ReceiverService : Service() {
     private fun startAirPlay() {
         if (!prefs.airplayEnabled) return
         try {
-            airplayServer = HttpServer(prefs.airplayPort, "airplay", secure = false) { req ->
+            // AirScreen v2.16.1 h9/c identifies itself as "AirTunes/220.68" — Apple
+            // senders key off the Server header, so keep it byte-identical.
+            airplayServer = HttpServer(prefs.airplayPort, "airplay", secure = false, serverToken = "AirTunes/220.68") { req ->
                 airplay.handle(req) ?: route(req, secure = false)
             }.also { it.start() }
         } catch (e: Exception) {

@@ -216,6 +216,7 @@ class CastReceiver(private val context: Context) {
 
             CastV2.NS_RECEIVER -> handleReceiver(message, out, peer)
 
+            CastV2.NS_MEDIA -> handleMedia(message, out, peer)
             CastV2.NS_WEBRTC -> {
                 // Arriving here at all would mean discovery, auth and launch all passed.
                 Logger.w("cast", "mirroring offer received - streaming layer not implemented yet")
@@ -223,6 +224,103 @@ class CastReceiver(private val context: Context) {
             }
 
             else -> Logger.i("cast", "unhandled namespace ${message.namespace} payload=${message.payloadUtf8?.take(200)}")
+        }
+    }
+
+    private fun handleMedia(message: CastV2.Message, out: DataOutputStream, peer: String) {
+        // AirScreen-style LOAD handling: after LAUNCH, the sender immediately sends a
+        // LOAD with the real media URL (media.contentId). Forward that URL to the
+        // Playback machinery (ExoPlayer via PlaybackActivity), then acknowledge with
+        // a MEDIA_STATUS so the sender's progress bar, controls and status loop work.
+        val payload = try {
+            JSONObject(message.payloadUtf8 ?: "{}")
+        } catch (_: Exception) {
+            return
+        }
+        val requestId = payload.optInt("requestId", 0)
+        when (payload.optString("type")) {
+            "LOAD" -> {
+                val media = payload.optJSONObject("media")
+                val contentId = media?.optString("contentId", "")
+                    ?: payload.optString("media", "{}")
+                Logger.i(
+                    "cast",
+                    "LOAD from $peer contentId=${contentId?.take(120)} " +
+                        "type=${payload.optString("autoplay", "")}",
+                )
+                if (!contentId.isNullOrBlank()) {
+                    try {
+                        val intent = android.content.Intent(
+                            context,
+                            com.aircast.receiver.player.PlayerActivity::class.java,
+                        ).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            putExtra(com.aircast.receiver.player.PlayerActivity.EXTRA_URL, contentId)
+                            putExtra(
+                                com.aircast.receiver.player.PlayerActivity.EXTRA_SOURCE,
+                                "cast",
+                            )
+                            putExtra(
+                                com.aircast.receiver.player.PlayerActivity.EXTRA_SENDER,
+                                currentSenderName,
+                            )
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Logger.e("cast", "LOAD startActivity failed: ${e.message}")
+                        // Fall back to the cast web page activity if the player cannot start
+                        try {
+                            val intent = android.content.Intent(
+                                context,
+                                com.aircast.receiver.cast.CastWebActivity::class.java,
+                            ).apply {
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                putExtra(com.aircast.receiver.cast.CastWebActivity.EXTRA_URL, contentId)
+                            }
+                            context.startActivity(intent)
+                        } catch (e2: Exception) {
+                            Logger.e("cast", "LOAD fallback startActivity failed: ${e2.message}")
+                        }
+                    }
+                }
+                val mediaStatus = JSONObject()
+                    .put("requestId", requestId)
+                    .put("type", "MEDIA_STATUS")
+                    .put(
+                        "status",
+                        JSONArray()
+                            .put(
+                                JSONObject()
+                                    .put("mediaSessionId", 1)
+                                    .put("playbackRate", 1.0)
+                                    .put("playerState", "PLAYING")
+                                    .put("currentTime", 0.0)
+                                    .put("supportedMediaCommands", 15)
+                                    .put(
+                                        "volume",
+                                        JSONObject()
+                                            .put("level", 1.0)
+                                            .put("muted", false),
+                                    ),
+                            ),
+                    )
+                reply(out, message, CastV2.NS_MEDIA, mediaStatus)
+            }
+
+            "GET_STATUS", "PAUSE", "PLAY", "STOP", "SEEK" -> {
+                // Sender is polling status while playback happens on our side.
+                reply(
+                    out,
+                    message,
+                    CastV2.NS_MEDIA,
+                    JSONObject()
+                        .put("requestId", requestId)
+                        .put("type", "MEDIA_STATUS")
+                        .put("status", JSONArray()),
+                )
+            }
+
+            else -> Logger.i("cast", "media: ${payload.optString("type")}")
         }
     }
 
@@ -446,7 +544,8 @@ class CastReceiver(private val context: Context) {
                         "namespaces",
                         JSONArray()
                             .put(JSONObject().put("name", CastV2.NS_WEBRTC))
-                            .put(JSONObject().put("name", CastV2.NS_MEDIA)),
+                            .put(JSONObject().put("name", CastV2.NS_MEDIA))
+                            .put(JSONObject().put("name", CastV2.NS_RECEIVER)),
                     ),
             )
         }

@@ -20,8 +20,12 @@ import java.util.Locale
  * `Content-Location`. From then on it polls `/playback-info` and pushes `/rate`,
  * `/scrub` and `/stop`. All of that is plain HTTP and is implemented below.
  *
- * `/fp-setup` (FairPlay) is answered with 501 on purpose: honouring it would mean
- * shipping Apple's leaked mirroring keys.
+ * Mirrored from AirScreen v2.16.1 `h9/c` (the native AirPlay receiver) so that
+ * Apple senders see a byte-compatible receiver: `/server-info` replies with
+ * `features = 61647880183`, `model = AppleTV3,1`, `osBuildVersion = 12B435`,
+ * `protovers = 1.0`, `srcvers = 211.3`, plus the plain `AirTunes/220.68` server
+ * header and echoed `CSeq`. `/fp-setup` (FairPlay) is answered with 501 on purpose:
+ * honouring it would mean shipping Apple's leaked mirroring keys.
  */
 class AirPlayHandler(private val context: Context) {
 
@@ -77,14 +81,24 @@ class AirPlayHandler(private val context: Context) {
 
     private fun serverInfo(req: HttpRequest): HttpResponse {
         Logger.i("airplay", "server-info requested by ${req.remoteIp}")
+        // Verbatim mirror of AirScreen v2.16.1 h9/c serverInfo plist values.
         val body = """<dict>
-  <key>deviceid</key><string>${Net.deviceIdColon(context)}</string>
-  <key>features</key><integer>119</integer>
-  <key>model</key><string>AppleTV3,2</string>
-  <key>protovers</key><string>1.0</string>
-  <key>srcvers</key><string>220.68</string>
-  <key>vv</key><integer>2</integer>
-  <key>name</key><string>${xmlEscape(prefs.deviceName)}</string>
+<key>features</key>
+<integer>61647880183</integer>
+<key>macAddress</key>
+<string>${Net.deviceIdColon(context).replace(":", "")}</string>
+<key>model</key>
+<string>AppleTV3,1</string>
+<key>osBuildVersion</key>
+<string>12B435</string>
+<key>protovers</key>
+<string>1.0</string>
+<key>srcvers</key>
+<string>211.3</string>
+<key>vv</key>
+<integer>2</integer>
+<key>deviceid</key>
+<string>${Net.deviceIdColon(context)}</string>
 </dict>"""
         return HttpResponse.xml(plist(body))
     }
