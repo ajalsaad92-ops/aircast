@@ -9,6 +9,8 @@ import com.getcapacitor.BridgeActivity
 class MainActivity : BridgeActivity() {
     companion object {
         private val launchStartedMs = System.currentTimeMillis()
+        /** Built-in registered Google Cast app id — always on, no manual setup. */
+        const val DEFAULT_CAST_APP_ID = "02898B6E"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,12 +26,25 @@ class MainActivity : BridgeActivity() {
 
         // Allow provisioning the Google Cast app id from adb without touching the UI:
         //   adb shell am start -n com.aircast.receiver.debug/... --es cast_app_id 02898B6E
-        val provisioned = intent?.getStringExtra("cast_app_id")
-        if (!provisioned.isNullOrBlank()) {
+        val rawProvisioned = intent?.getStringExtra("cast_app_id")
+        // Default built-in registration: this app always runs with its own
+        // registered Cast app id (02898B6E) and device-auth bypass, so the user
+        // never has to provision anything manually.
+        val provisioned = if (rawProvisioned.isNullOrBlank()) DEFAULT_CAST_APP_ID else rawProvisioned
+        run {
             val p = Prefs.get(this)
-            if (p.castAppId != provisioned.trim()) {
-                p.castAppId = provisioned.trim()
-                com.aircast.receiver.core.Logger.i("main", "cast app id provisioned via intent: ${p.castAppId}")
+            val wantId = provisioned?.trim().orEmpty()
+            if (p.castAppId != wantId) {
+                p.castAppId = wantId
+                com.aircast.receiver.core.Logger.i("main", "cast app id set (intent=${!provisioned.isNullOrBlank()}): ${p.castAppId}")
+            }
+            if (!p.castBypassAuth) {
+                p.castBypassAuth = true
+                com.aircast.receiver.core.Logger.i("main", "cast device-auth bypass enabled by default")
+            }
+            if (!p.castEnabled) {
+                p.castEnabled = true
+                com.aircast.receiver.core.Logger.i("main", "cast protocol enabled by default")
             }
         }
         // Provision device-auth bypass from adb so Quest 3 (Chromecast mode with
@@ -75,11 +90,20 @@ class MainActivity : BridgeActivity() {
         // SingleTask launch: when the app is already running, delivery lands here
         // instead of onCreate — so re-run the provisioning logic.
         val provisioned = intent.getStringExtra("cast_app_id")
-        if (!provisioned.isNullOrBlank()) {
+        val wantId = if (!provisioned.isNullOrBlank()) provisioned.trim() else DEFAULT_CAST_APP_ID
+        run {
             val p = Prefs.get(this)
-            if (p.castAppId != provisioned.trim()) {
-                p.castAppId = provisioned.trim()
-                com.aircast.receiver.core.Logger.i("main", "cast app id provisioned via intent (new): ${p.castAppId}")
+            if (p.castAppId != wantId) {
+                p.castAppId = wantId
+                com.aircast.receiver.core.Logger.i("main", "cast app id set via new intent (intent=${!provisioned.isNullOrBlank()}): ${p.castAppId}")
+            }
+            if (!p.castBypassAuth) {
+                p.castBypassAuth = true
+                com.aircast.receiver.core.Logger.i("main", "cast device-auth bypass enabled by default (new intent)")
+            }
+            if (!p.castEnabled) {
+                p.castEnabled = true
+                com.aircast.receiver.core.Logger.i("main", "cast protocol enabled by default (new intent)")
             }
         }
         if (intent.hasExtra("cast_bypass_auth")) {
