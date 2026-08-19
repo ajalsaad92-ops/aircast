@@ -1360,6 +1360,21 @@ button {
   letter-spacing: 0.06em;
   color: var(--ink);
 }
+.as-version {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--amber-glow);
+  border: 1px solid rgba(242, 167, 59, 0.6);
+  color: var(--amber-soft);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-inline-start: 4px;
+}
 .as-topbar__logo {
   display: inline-flex;
   align-items: center;

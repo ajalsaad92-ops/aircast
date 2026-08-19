@@ -201,7 +201,7 @@ export function MainPage() {
       <header className="as-topbar">
         <span className="as-topbar__brand">
           <span className="as-topbar__logo">AS</span>
-          AirCast
+          AirCast <span className="as-version">V22</span>
         </span>
         <button
           type="button"
