@@ -96,6 +96,11 @@ class CastReceiver(private val context: Context) {
 
     val isRunning: Boolean get() = running.get()
 
+    companion object {
+        /** Mirrors CastV2.PORT so the UI/self-test can advertise the bound port. */
+        val PORT: Int = CastV2.PORT
+    }
+
     private fun acceptLoop(socket: ServerSocket) {
         while (running.get()) {
             val client = try {

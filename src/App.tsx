@@ -3,10 +3,11 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { ReceiverProvider, useReceiver } from './hooks/useReceiver';
 import { MainPage } from './pages/MainPage';
 import { AdvancedPage } from './pages/AdvancedPage';
-import { CastIcon, PowerIcon, SlidersIcon } from './components/Icons';
+import { TroubleshootPage } from './pages/TroubleshootPage';
+import { CastIcon, PowerIcon, SlidersIcon, WrenchIcon } from './components/Icons';
 import type { MessageKey } from './lib/i18n';
 
-type TabId = 'main' | 'advanced';
+type TabId = 'main' | 'advanced' | 'troubleshoot';
 
 const TABS: Array<{
   id: TabId;
@@ -15,6 +16,7 @@ const TABS: Array<{
 }> = [
   { id: 'main', label: 'nav.main', Icon: CastIcon },
   { id: 'advanced', label: 'nav.advanced', Icon: SlidersIcon },
+  { id: 'troubleshoot', label: 'nav.troubleshoot', Icon: WrenchIcon },
 ];
 
 function Shell() {
@@ -78,7 +80,7 @@ function Shell() {
           <div className="topbar__scale" aria-hidden="true" />
         </header>
 
-        <main className="scroll">{!ready ? null : tab === 'main' ? <MainPage /> : <AdvancedPage />}</main>
+        <main className="scroll">{!ready ? null : tab === 'main' ? <MainPage /> : tab === 'troubleshoot' ? <TroubleshootPage /> : <AdvancedPage />}</main>
       </div>
 
       <nav className="nav">

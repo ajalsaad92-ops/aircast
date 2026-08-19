@@ -1094,7 +1094,7 @@ button {
   position: fixed;
   bottom: 0;
   inset-inline: 0;
-  z-index: 30;
+  z-index: 60;
   display: flex;
   max-width: 720px;
   margin-inline: auto;

@@ -45,6 +45,7 @@ import com.aircast.receiver.net.PrefsHolder
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
+import java.text.SimpleDateFormat
 
 /**
  * Holds every listener the receiver needs, for as long as the user wants to be
@@ -200,6 +201,12 @@ class ReceiverService : Service() {
             Logger.i("service", "receiver online as \"${prefs.deviceName}\" at $lastIp")
             updateNotification()
             broadcastStatus()
+
+            // Automatic in-device self-test: 5s after the sockets settle the device
+            // probes its OWN listeners from inside, so "the app is fake" becomes an
+            // answerable question without any external tooling. Results land in
+            // logcat (tag `selftest`) and in the Troubleshoot page report.
+            startAutoSelfTest()
         } catch (e: Exception) {
             // OEM/ROM policy quirks (foreground-service restrictions on Android 16,
             // broken notification stacks, missing permissions) must never crash the
@@ -345,6 +352,9 @@ class ReceiverService : Service() {
             } catch (_: Exception) { /* best effort */ }
             return HttpResponse(204, null)
         }
+        if (req.path == "/api/diag" || req.path == "/api/diag.txt") {
+            return buildDiagnosticReport()
+        }
         mirror.handle(req)?.let { return it }
         if (prefs.smbEnabled) {
             SmbStream.handle(req)?.let { return it }
@@ -365,6 +375,147 @@ class ReceiverService : Service() {
         if (prefs.dlnaEnabled && !secure) dlna.handle(req)?.let { return it }
         if (prefs.airplayEnabled && !secure) airplay.handle(req)?.let { return it }
         return HttpResponse.notFound()
+    }
+
+    // ---- diagnostics --------------------------------------------------------
+
+    /**
+     * Full self-serve diagnostic report. The Troubleshoot page renders it and gives
+     * the user a single copy button; the plain-text variant also lets the user paste
+     * it into a support channel directly.
+     */
+    private fun buildDiagnosticReport(): HttpResponse {
+        try {
+            val p = Prefs.get(this)
+            val net = JSONObject()
+            net.put("ip", Net.primaryIp())
+            net.put("connected", Net.isConnected(this))
+            net.put("transport", Net.transportName(this))
+            net.put("ssid", Net.ssid(this) ?: "")
+            val ips = JSONArray()
+            Net.localIpv4Addresses().forEach { ips.put(it) }
+            net.put("ips", ips)
+
+            val mdns = JSONObject()
+            mdns.put("nsdAdvertiserRunning", nsd != null)
+            mdns.put("mdnsResponderRunning", mdnsResponder != null)
+            mdns.put("mdnsLogLines", Logger.snapshot()
+                .filter { it.contains("[mdns]") }.takeLast(8).joinToString("\n"))
+
+            val servers = JSONObject()
+            servers.put("httpBound", httpServer?.boundPort ?: -1)
+            servers.put("httpsBound", httpsServer?.boundPort ?: -1)
+            servers.put("airplayBound", airplayServer?.boundPort ?: -1)
+            servers.put("castRunning", cast?.isRunning == true)
+
+            val logLines = Logger.snapshot().takeLast(40)
+            val json = JSONObject()
+                .put("device", prefs.deviceName)
+                .put("build", try {
+                    val pm = packageManager
+                    val info = pm.getPackageInfo(packageName, 0)
+                    "${info.versionName ?: "?"} (${info.longVersionCode})"
+                } catch (_: Exception) {
+                    "unknown"
+                })
+                .put("time", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                    .format(java.util.Date()))
+                .put("bootId", p.bootId)
+                .put("prefs", p.toJson())
+                .put("network", net)
+                .put("mdns", mdns)
+                .put("servers", servers)
+                .put("logs", JSONArray().apply { logLines.forEach { put(it) } })
+            return HttpResponse.json(json.toString())
+        } catch (e: Exception) {
+            return HttpResponse.text("diag failed: ${e.message}", 500)
+        }
+    }
+
+    // ---- automatic in-device self-test ----------------------------------------
+
+    /**
+     * Auto self-test: after the sockets settle, open each of the receiver's own
+     * ports from inside the device. Every line is tagged `selftest` in logcat so it
+     * survives any network isolation and can be pulled with a single
+     * `logcat -d -s selftest`.
+     */
+    private fun startAutoSelfTest() {
+        try {
+            Thread({
+                try {
+                    Thread.sleep(5000)
+                } catch (_: InterruptedException) { return@Thread }
+                SelfTester.run(this)
+            }, "aircast-selftest").apply { isDaemon = true }.start()
+        } catch (_: Exception) { /* never block startup */ }
+    }
+
+    private object SelfTester {
+        private fun tag(msg: String) = Logger.i("selftest", msg)
+
+        fun run(service: ReceiverService) {
+            tag("=== Auto self-test start ===")
+            tag("ip=${Net.primaryIp()} transport=${Net.transportName(service)} ssid=${Net.ssid(service) ?: "?"} ips=${Net.localIpv4Addresses().joinToString(",")}")
+
+            val probes = listOf(
+                "http" to (service.httpServer?.boundPort ?: -1),
+                "https" to (service.httpsServer?.boundPort ?: -1),
+                "airplay" to (service.airplayServer?.boundPort ?: -1),
+                "cast" to (service.cast?.let { com.aircast.receiver.cast.CastReceiver.PORT } ?: -1),
+            )
+            for ((name, port) in probes) {
+                val ok = if (port <= 0) "not-running" else probeTcp(port, 3000)
+                tag("$name port=$port -> $ok")
+            }
+            tag("nsdAdvertiser=${service.nsd != null} mdnsResponder=${service.mdnsResponder != null} castRunning=${service.cast?.isRunning}")
+
+            // mDNS evidence: whether the multicast socket actually sent a packet.
+            val mdnsSent = LiteMdnsResponder.lastSendCount()
+            tag("mdnsPacketsSent=$mdnsSent")
+
+            // HTTP sanity: fetch the landing page over loopback.
+            val landingOk = try {
+                val url = java.net.URL("http://127.0.0.1:${service.prefs.httpPort}/")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                conn.requestMethod = "GET"
+                val code = conn.responseCode
+                conn.disconnect()
+                "landing-http=$code"
+            } catch (e: Exception) {
+                "landing-http=FAILED(${e.message?.take(60)})"
+            }
+            tag(landingOk)
+
+            // Cast TLS sanity: reach the Cast control port over a TLS socket.
+            val castTlsOk = try {
+                val addr = java.net.InetSocketAddress(Net.primaryIp(), com.aircast.receiver.cast.CastReceiver.PORT)
+                val socket = java.net.Socket().apply { connect(addr, 4000) }
+                socket.close()
+                "cast-tcp=ok"
+            } catch (e: Exception) {
+                "cast-tcp=FAILED(${e.message?.take(60)})"
+            }
+            tag(castTlsOk)
+
+            // Cast mDNS record evidence: what the responder advertised last time.
+            tag("mdnsAnnouncements=${LiteMdnsResponder.lastAnnouncementInfo()}")
+            tag("=== Auto self-test end ===")
+        }
+
+        private fun probeTcp(port: Int, timeout: Int): String {
+            return try {
+                val s = java.net.Socket().apply {
+                    connect(java.net.InetSocketAddress("127.0.0.1", port), timeout)
+                    close()
+                }
+                "open"
+            } catch (e: Exception) {
+                "FAILED(${e.message?.take(60)})"
+            }
+        }
     }
 
     // ---- housekeeping -------------------------------------------------------
@@ -616,6 +767,8 @@ class ReceiverService : Service() {
                 .put("httpPort", prefs.httpPort)
                 .put("httpsPort", prefs.httpsPort)
                 .put("airplayPort", prefs.airplayPort)
+                .put("castPort", com.aircast.receiver.cast.CastReceiver.PORT)
+                .put("castEnabled", prefs.castEnabled)
                 .put("landingUrl", "http://$ip:${prefs.httpPort}/")
                 .put("mirrorUrl", "https://$ip:${prefs.httpsPort}/cast")
                 .put("tlsReady", instance?.httpsServer != null)

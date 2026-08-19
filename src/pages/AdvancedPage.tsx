@@ -49,9 +49,23 @@ function ProtocolsSection() {
       </Panel>
 
       <Panel title="Chromecast" index={1}>
-        <p style={{ margin: 0, color: 'var(--ink-3)', fontSize: '0.85rem', lineHeight: 1.7 }}>
-          {t('quest.castFailed' as never)}
-        </p>
+        <div
+          className="strip"
+          data-on={settings?.castEnabled ?? false}
+          data-live={status?.castEnabled ?? false}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <span className="strip__led" />
+          <div className="strip__text" style={{ flex: 1 }}>
+            <div className="strip__name">Google Cast</div>
+            <div className="strip__desc">
+              {t('nav.troubleshoot')} · {(settings?.castAppId ?? '') || '—'} · {t('app.port', { p: String(status?.castPort ?? 8009) })}
+            </div>
+          </div>
+          <span className="strip__desc" style={{ fontSize: '0.7rem' }}>
+            {t('trouble.selfTest.hint')}
+          </span>
+        </div>
       </Panel>
     </>
   );

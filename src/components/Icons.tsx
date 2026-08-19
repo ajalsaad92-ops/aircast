@@ -106,6 +106,13 @@ export const ImageIcon = ({ className }: Props) => (
   </svg>
 );
 
+export const WrenchIcon = ({ className }: Props) => (
+  <svg {...base} className={className} aria-hidden="true">
+    <path d="M14.7 6.3a4 4 0 0 1 5.1 5.1L15 16.2 11.4 21l-5-5 4.8-3.6L16 7.6 13.8 5.4l.9-.9" />
+    <path d="M8 10.5l-5 5" />
+  </svg>
+);
+
 export const VideoIcon = ({ className }: Props) => (
   <svg {...base} className={className} aria-hidden="true">
     <rect x="2.5" y="5" width="14" height="14" rx="2" />

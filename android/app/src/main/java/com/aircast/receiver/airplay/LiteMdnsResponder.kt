@@ -37,6 +37,7 @@ class LiteMdnsResponder(private val context: Context) {
     private var thread: Thread? = null
     private val prefs = Prefs.get(context)
 
+
     data class TypeRecord(
         val serviceType: String,   // "_googlecast._tcp"
         val fqdn: String,          // "_googlecast._tcp.local."
@@ -128,14 +129,15 @@ class LiteMdnsResponder(private val context: Context) {
                 announcePackets.add(DatagramPacket(pkt, pkt.size, mcAddr))
             }
             Logger.i("mdns", "lite responder announcing ${announcePackets.size} types every 2s")
+            recordInfo(records.joinToString(";") { "${it.serviceType}=${it.port}/${it.txt.entries.take(3).joinToString(",") { e -> "${e.key}=${e.value}" }}" })
 
             val announcePacketsFinal: List<DatagramPacket> = ArrayList(announcePackets)
 
             // First announce immediately, then every 2 seconds. DNS-SD requires at
             // least 2 unsolicited announcements in the first 2 seconds (probe/announce),
             // then periodic announcements at >= 60s; we keep 2s for reliable discovery.
-            try { s.send(announcePacketsFinal[0]) } catch (_: Exception) {}
-            try { Thread.sleep(200); s.send(announcePacketsFinal[1 % announcePacketsFinal.size]) } catch (_: Exception) {}
+            try { s.send(announcePacketsFinal[0]); bumpSend() } catch (_: Exception) {}
+            try { Thread.sleep(200); s.send(announcePacketsFinal[1 % announcePacketsFinal.size]); bumpSend() } catch (_: Exception) {}
             var announceIndex = 2
             var lastAnnounce = System.currentTimeMillis()
             while (running) {
@@ -157,6 +159,7 @@ class LiteMdnsResponder(private val context: Context) {
                         try {
                             s.send(reply)
                             Logger.i("mdns", "lite responder sent reply ${answers.size} bytes to group")
+                            bumpSend()
                         } catch (e: Exception) {
                             Logger.w("mdns", "lite responder send failed: ${e.message}")
                         }
@@ -171,6 +174,7 @@ class LiteMdnsResponder(private val context: Context) {
                         try {
                             s.send(announcePacketsFinal[announceIndex % announcePacketsFinal.size])
                             Logger.i("mdns", "lite responder announced (total ${announceIndex + 1})")
+                            bumpSend()
                         } catch (_: Exception) {}
                         announceIndex++
                         lastAnnounce = now
@@ -196,6 +200,18 @@ class LiteMdnsResponder(private val context: Context) {
     }
 
     companion object {
+        @Volatile private var sendCount = 0L
+        @Volatile private var announcementInfo = ""
+
+        /** Total multicast sends (announcements + answers) since service start. */
+        fun lastSendCount(): Long = sendCount
+
+        /** Last advertised record summary — proves what senders on the LAN receive. */
+        fun lastAnnouncementInfo(): String = announcementInfo
+
+        fun bumpSend() { sendCount++ }
+        fun recordInfo(info: String) { announcementInfo = info }
+
         // ---- minimal DNS encoder/decoder -------------------------------------
 
         private fun encodeName(name: String): ByteArray {

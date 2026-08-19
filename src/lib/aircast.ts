@@ -64,6 +64,9 @@ export interface Status {
   landingUrl: string;
   mirrorUrl: string;
   tlsReady: boolean;
+  /** Google Cast control channel port (8009). */
+  castPort: number;
+  castEnabled: boolean;
   protocols: Protocols;
   sessions: Session[];
   mirrorPeers: MirrorPeer[];
@@ -330,6 +333,8 @@ const webFallback: AirCastPlugin = (() => {
     landingUrl: `http://192.168.1.42:${settings.httpPort}/`,
     mirrorUrl: `https://192.168.1.42:${settings.httpsPort}/cast`,
     tlsReady: true,
+    castPort: 8009,
+    castEnabled: settings.castEnabled,
     protocols: {
       dlna: settings.dlnaEnabled,
       airplay: settings.airplayEnabled,
