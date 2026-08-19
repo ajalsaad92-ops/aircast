@@ -469,6 +469,13 @@ class ReceiverService : Service() {
                 tag("$name port=$port -> $ok")
             }
             tag("nsdAdvertiser=${service.nsd != null} mdnsResponder=${service.mdnsResponder != null} castRunning=${service.cast?.isRunning}")
+            // mDNS send counters (already logged below) — Cast TLS path verdict: recompute
+            val castFactoryOk = try {
+                com.aircast.receiver.mirror.TlsFactory.serverSocketFactory(service) != null
+            } catch (e: Exception) {
+                false
+            }
+            tag("castTlsFactory=${castFactoryOk}")
 
             // mDNS evidence: whether the multicast socket actually sent a packet.
             val mdnsSent = LiteMdnsResponder.lastSendCount()
@@ -777,7 +784,8 @@ class ReceiverService : Service() {
                     JSONObject()
                         .put("dlna", prefs.dlnaEnabled)
                         .put("airplay", prefs.airplayEnabled)
-                        .put("mirror", prefs.mirrorEnabled),
+                        .put("mirror", prefs.mirrorEnabled)
+                        .put("cast", instance?.cast?.isRunning ?: false),
                 )
                 .put("sessions", Sessions.toJsonArray())
                 .put("mirrorPeers", MirrorSignaling.peersJson())

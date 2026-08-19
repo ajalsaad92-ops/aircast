@@ -80,7 +80,17 @@ object TlsFactory {
             }
         } else {
             Logger.i("tls", "generating certificate for [$sans]")
-            val created = generate(sans) ?: return null
+            val created = generate(sans)
+            if (created == null) {
+                // Wipe the stale store so the next call (or app relaunch) retries
+                // generation with the current network addresses instead of caching
+                // the failed state for the rest of the process lifetime.
+                storeFile.delete()
+                sansFile.delete()
+                cached = null
+                cachedSans = ""
+                return null
+            }
             storeFile.outputStream().use { created.store(it, PASSWORD) }
             sansFile.writeText(sans)
             created
@@ -123,11 +133,14 @@ object TlsFactory {
             if (ip.isNotBlank()) names.add(GeneralName(GeneralName.iPAddress, ip.trim()))
         }
         builder.addExtension(Extension.subjectAlternativeName, false, GeneralNames(names.toTypedArray()))
-        builder.addExtension(Extension.basicConstraints, true, BasicConstraints(true))
+        // Server (not CA) certificate — Android 16 Conscrypt rejects keyCertSign with
+        // BasicConstraints.CA(true) on generated keys, which made Cast's TLS factory
+        // return null and left the whole Cast control channel silent.
+        builder.addExtension(Extension.basicConstraints, false, BasicConstraints(false))
         builder.addExtension(
             Extension.keyUsage,
             true,
-            KeyUsage(KeyUsage.digitalSignature or KeyUsage.keyEncipherment or KeyUsage.keyCertSign),
+            KeyUsage(KeyUsage.digitalSignature or KeyUsage.keyEncipherment),
         )
         builder.addExtension(
             Extension.extendedKeyUsage,
