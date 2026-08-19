@@ -232,10 +232,14 @@ class CastReceiver(private val context: Context) {
         }
     }
 
+    /** Last contentId loaded — GET_STATUS/PAUSE/PLAY/SEEK replay a live-looking status. */
+    @Volatile private var lastMediaUrl: String = ""
+    @Volatile private var lastMediaTitle: String = ""
+
     private fun handleMedia(message: CastV2.Message, out: DataOutputStream, peer: String) {
         // AirScreen-style LOAD handling: after LAUNCH, the sender immediately sends a
         // LOAD with the real media URL (media.contentId). Forward that URL to the
-        // Playback machinery (ExoPlayer via PlaybackActivity), then acknowledge with
+        // Playback machinery (ExoPlayer via PlayerActivity), then acknowledge with
         // a MEDIA_STATUS so the sender's progress bar, controls and status loop work.
         val payload = try {
             JSONObject(message.payloadUtf8 ?: "{}")
@@ -246,14 +250,20 @@ class CastReceiver(private val context: Context) {
         when (payload.optString("type")) {
             "LOAD" -> {
                 val media = payload.optJSONObject("media")
-                val contentId = media?.optString("contentId", "")
-                    ?: payload.optString("media", "{}")
+                val contentId = media?.optString("contentId") ?: ""
+                val metadata = media?.optJSONObject("metadata")
+                val title = metadata?.optString("title", "")
+                    ?: metadata?.optString("name", "")
+                    ?: contentId
                 Logger.i(
                     "cast",
-                    "LOAD from $peer contentId=${contentId?.take(120)} " +
-                        "type=${payload.optString("autoplay", "")}",
+                    "LOAD from $peer contentId=${contentId.take(120)} autoplay=${payload.optString("autoplay", "true")}",
                 )
-                if (!contentId.isNullOrBlank()) {
+                // Remember what we are playing so follow-up status commands can
+                // reply with a matching MEDIA_STATUS instead of an empty list.
+                lastMediaUrl = contentId
+                lastMediaTitle = title
+                if (contentId.isNotBlank()) {
                     try {
                         val intent = android.content.Intent(
                             context,
@@ -269,6 +279,9 @@ class CastReceiver(private val context: Context) {
                                 com.aircast.receiver.player.PlayerActivity.EXTRA_SENDER,
                                 currentSenderName,
                             )
+                            if (title.isNotBlank()) {
+                                putExtra(com.aircast.receiver.player.PlayerActivity.EXTRA_TITLE, title)
+                            }
                         }
                         context.startActivity(intent)
                     } catch (e: Exception) {
@@ -288,45 +301,47 @@ class CastReceiver(private val context: Context) {
                         }
                     }
                 }
-                val mediaStatus = JSONObject()
-                    .put("requestId", requestId)
-                    .put("type", "MEDIA_STATUS")
-                    .put(
-                        "status",
-                        JSONArray()
-                            .put(
-                                JSONObject()
-                                    .put("mediaSessionId", 1)
-                                    .put("playbackRate", 1.0)
-                                    .put("playerState", "PLAYING")
-                                    .put("currentTime", 0.0)
-                                    .put("supportedMediaCommands", 15)
-                                    .put(
-                                        "volume",
-                                        JSONObject()
-                                            .put("level", 1.0)
-                                            .put("muted", false),
-                                    ),
-                            ),
-                    )
-                reply(out, message, CastV2.NS_MEDIA, mediaStatus)
+                reply(out, message, CastV2.NS_MEDIA, mediaStatus(requestId, "PLAYING", 0.0))
             }
 
-            "GET_STATUS", "PAUSE", "PLAY", "STOP", "SEEK" -> {
-                // Sender is polling status while playback happens on our side.
-                reply(
-                    out,
-                    message,
-                    CastV2.NS_MEDIA,
-                    JSONObject()
-                        .put("requestId", requestId)
-                        .put("type", "MEDIA_STATUS")
-                        .put("status", JSONArray()),
-                )
-            }
+            "GET_STATUS" -> reply(out, message, CastV2.NS_MEDIA, mediaStatus(requestId, "PLAYING"))
+
+            "PAUSE", "STOP" -> reply(out, message, CastV2.NS_MEDIA, mediaStatus(requestId, "IDLE"))
+
+            "PLAY", "SEEK" -> reply(out, message, CastV2.NS_MEDIA, mediaStatus(requestId, "PLAYING"))
 
             else -> Logger.i("cast", "media: ${payload.optString("type")}")
         }
+    }
+
+    /** Full-ish MEDIA_STATUS matching what a real receiver sends. Senders like
+     *  WebVideoCaster drop the connection when they cannot parse a bare status. */
+    private fun mediaStatus(requestId: Int, playerState: String, currentTime: Double? = null): JSONObject {
+        val state = if (lastMediaUrl.isNotBlank()) playerState else "IDLE"
+        val media = JSONObject()
+            .put("contentId", lastMediaUrl)
+            .put("contentType", "application/x-mpegURL")
+            .put(
+                "metadata",
+                JSONObject()
+                    .put("metadataType", 0)
+                    .put("title", lastMediaTitle.ifBlank { lastMediaUrl }),
+            )
+            .put("streamType", "BUFFERED")
+            .put("supportedMediaCommands", 15)
+            .put("customData", JSONObject())
+        val entry = JSONObject()
+            .put("mediaSessionId", 1)
+            .put("playbackRate", 1.0)
+            .put("playerState", state)
+            .put("currentTime", currentTime ?: 0.0)
+            .put("supportedMediaCommands", 15)
+            .put("volume", JSONObject().put("level", 1.0).put("muted", false))
+        val statusArray = if (state == "IDLE" && lastMediaUrl.isBlank()) JSONArray() else JSONArray().put(entry.put("media", media))
+        return JSONObject()
+            .put("requestId", requestId)
+            .put("type", "MEDIA_STATUS")
+            .put("status", statusArray)
     }
 
     private fun handleDeviceAuth(message: CastV2.Message, out: DataOutputStream, peer: String) {
