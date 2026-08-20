@@ -108,6 +108,8 @@ export function MainPage() {
   const mirrorUrl = status?.mirrorUrl ?? '';
   const castEnabled = (settings?.castEnabled ?? false) && (status?.running ?? false);
   const castAppId = settings?.castAppId ?? '';
+  const airplayOn = (settings?.airplayEnabled ?? false) && running;
+  const dlnaOn = (settings?.dlnaEnabled ?? false) && running;
 
   const { state, session, stream, stop } = useMirror(status?.ip, mirrorEnabled);
 
@@ -269,6 +271,17 @@ export function MainPage() {
           <span className={`as-hero__led${running ? ' as-hero__led--on' : ''}`} />
           {running && <span className="as-hero__ledstate">{t('as.onAir')}</span>}
         </div>
+        <button
+          type="button"
+          className="btn as-hero__cast"
+          style={{ marginTop: 14 }}
+          onClick={() => void AirCast.openCastPage({})}
+        >
+          <span style={{ display: 'inline-flex', width: 18, height: 18 }}>
+            <ProtocolGlyph name="cast" active />
+          </span>
+          {lang === 'ar' ? 'بث من نظارة الكويست' : 'Cast from Quest'}
+        </button>
       </section>
 
       {/* Network status card (AirScreen right panel) */}
@@ -308,15 +321,15 @@ export function MainPage() {
             {castEnabled ? (castAppId ? castAppId : t('as.enabled')) : t('as.off')}
           </span>
         </div>
-        <div className={`as-state${running ? ' as-state--on' : ''}`}>
-          <ProtocolGlyph name="airplay" active={running} />
+        <div className={`as-state${airplayOn ? ' as-state--on' : ''}`}>
+          <ProtocolGlyph name="airplay" active={airplayOn} />
           <span className="as-state__name">AirPlay</span>
-          <span className="as-state__tag">{running ? t('as.listening') : t('as.off')}</span>
+          <span className="as-state__tag">{airplayOn ? t('as.listening') : t('as.off')}</span>
         </div>
-        <div className={`as-state${running ? ' as-state--on' : ''}`}>
-          <ProtocolGlyph name="dlna" active={running} />
+        <div className={`as-state${dlnaOn ? ' as-state--on' : ''}`}>
+          <ProtocolGlyph name="dlna" active={dlnaOn} />
           <span className="as-state__name">DLNA</span>
-          <span className="as-state__tag">{running ? t('as.rendererOn') : t('as.off')}</span>
+          <span className="as-state__tag">{dlnaOn ? t('as.rendererOn') : t('as.off')}</span>
         </div>
         <div className={`as-state${mirrorEnabled ? ' as-state--on' : ''}`}>
           <ProtocolGlyph name="mirror" active={mirrorEnabled} />
@@ -470,14 +483,14 @@ export function MainPage() {
         <DockButton
           name="airplay"
           label="AirPlay"
-          active={running}
-          onPress={() => void togglePower()}
+          active={airplayOn}
+          onPress={() => setEnabled({ airplayEnabled: !(settings?.airplayEnabled ?? false) })}
         />
         <DockButton
           name="dlna"
           label="DLNA"
-          active={running}
-          onPress={() => void togglePower()}
+          active={dlnaOn}
+          onPress={() => setEnabled({ dlnaEnabled: !(settings?.dlnaEnabled ?? false) })}
         />
       </nav>
     </div>

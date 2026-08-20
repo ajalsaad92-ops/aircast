@@ -148,6 +148,19 @@ export function useMirror(localIp: string | undefined, enabled: boolean) {
         return;
       }
       handles.push(...registered);
+
+      // An offer can arrive in the window between `enabled` flipping true and these
+      // listeners attaching — classically the first one. The native side keeps it, so
+      // pull anything still unanswered and negotiate it now instead of forcing the user
+      // to re-initiate the cast.
+      try {
+        const { offers } = await AirCast.mirrorPending();
+        if (!cancelled && offers.length > 0 && !idRef.current) {
+          void accept(offers[offers.length - 1]);
+        }
+      } catch {
+        /* pending replay is best-effort */
+      }
     })();
 
     return () => {

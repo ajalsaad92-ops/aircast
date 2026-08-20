@@ -453,17 +453,17 @@ function NetworkPanel() {
   const [newServer, setNewServer] = useState(false);
   const [form, setForm] = useState({ name: '', host: '', share: '', user: '', pass: '' });
 
-  if (!settings) return null;
-
   useEffect(() => {
     // Pretty-print the JSON list so it is readable and editable.
     try {
-      const parsed = JSON.parse(settings.smbServers ?? '[]');
+      const parsed = JSON.parse(settings?.smbServers ?? '[]');
       setServersText(JSON.stringify(parsed, null, 2));
     } catch {
-      setServersText(settings.smbServers ?? '[]');
+      setServersText(settings?.smbServers ?? '[]');
     }
-  }, [settings.smbServers]);
+  }, [settings?.smbServers]);
+
+  if (!settings) return null;
 
   const commitServers = () => {
     let parsed: unknown;

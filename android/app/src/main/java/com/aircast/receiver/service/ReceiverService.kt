@@ -302,6 +302,24 @@ class ReceiverService : Service() {
         startEverything()
     }
 
+    /**
+     * Applies non-structural setting changes in place — no socket teardown, so a live
+     * cast/mirror session survives. Covers the overlay background mode, the wake lock
+     * (keepScreenOn) and the status/notification surfaces.
+     */
+    @Synchronized
+    fun applyLightSettings() {
+        if (!isRunning) return
+        Logger.i("service", "applying settings (light)")
+        try {
+            syncOverlayActivity()
+            updateNotification()
+            broadcastStatus()
+        } catch (e: Exception) {
+            Logger.e("service", "applyLightSettings failed: ${e.message}")
+        }
+    }
+
     // ---- servers ------------------------------------------------------------
 
     private fun startHttp() {

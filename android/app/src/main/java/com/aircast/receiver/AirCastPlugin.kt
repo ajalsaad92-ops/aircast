@@ -203,12 +203,24 @@ class AirCastPlugin : Plugin() {
     @PluginMethod
     fun setSettings(call: PluginCall) {
         val prefs = Prefs.get(appContext())
-        val before = prefs.toJson().toString()
+        val beforeJson = prefs.toJson()
         prefs.applyJson(JSONObject(call.data.toString()))
-        val after = prefs.toJson().toString()
+        val afterJson = prefs.toJson()
 
-        if (before != after && ReceiverService.isRunning) {
-            ReceiverService.instance?.reconfigure() ?: ReceiverService.restart(appContext())
+        if (beforeJson.toString() != afterJson.toString() && ReceiverService.isRunning) {
+            // Only a change to a field the live listeners/advertisers depend on needs a
+            // full restart. Toggling cast, security, quality, SMB, background, etc. must
+            // NOT tear down an active mirror/cast session — that was the "have to close
+            // and reopen the cast for it to work" bug.
+            val structural = STRUCTURAL_KEYS.any {
+                beforeJson.opt(it)?.toString() != afterJson.opt(it)?.toString()
+            }
+            if (structural) {
+                ReceiverService.instance?.reconfigure() ?: ReceiverService.restart(appContext())
+            } else {
+                // Apply the lighter-weight effects without dropping sessions.
+                ReceiverService.instance?.applyLightSettings()
+            }
         }
         call.resolve(JSObject.fromJSONObject(prefs.toJson()))
     }
@@ -278,6 +290,11 @@ class AirCastPlugin : Plugin() {
         // documented for arrays and collections, not for a JSONArray.
         val arr = MirrorSignaling.candidatesSince(peer.senderCandidates, since)
         call.resolve(JSObject().put("candidates", JSArray(arr.toString())))
+    }
+
+    @PluginMethod
+    fun mirrorPending(call: PluginCall) {
+        call.resolve(JSObject().put("offers", JSArray(MirrorSignaling.pendingOffers().toString())))
     }
 
     @PluginMethod
@@ -512,5 +529,21 @@ class AirCastPlugin : Plugin() {
     companion object {
         const val PERM_NOTIFICATIONS = "notifications"
         const val PERM_MICROPHONE = "microphone"
+
+        /**
+         * Settings whose change actually alters which sockets/advertisers run or how they
+         * bind. Only these justify a full stop/start (which drops live sessions). Everything
+         * else (cast toggle/app-id/security, quality, SMB, background, rotation…) is applied
+         * in place so an active cast/mirror is never interrupted.
+         */
+        private val STRUCTURAL_KEYS = listOf(
+            "deviceName",
+            "dlnaEnabled",
+            "airplayEnabled",
+            "mirrorEnabled",
+            "httpPort",
+            "httpsPort",
+            "airplayPort",
+        )
     }
 }

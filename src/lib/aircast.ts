@@ -181,6 +181,7 @@ export interface AirCastPlugin {
     candidates: RTCIceCandidateInit[];
   }>;
   mirrorEnd(options: { id?: string }): Promise<void>;
+  mirrorPending(): Promise<{ offers: MirrorOfferEvent[] }>;
 
   startRecording(): Promise<{ recording: boolean; cancelled?: boolean }>;
   stopRecording(): Promise<{ recording: boolean }>;
@@ -411,6 +412,7 @@ const webFallback: AirCastPlugin = (() => {
     mirrorCandidate: noop,
     mirrorGetCandidates: async () => ({ candidates: [] }),
     mirrorEnd: noop,
+    mirrorPending: async () => ({ offers: [] }),
     startRecording: async () => ({ recording: false, cancelled: true }),
     stopRecording: async () => ({ recording: false }),
     getRecordingState: async () => ({ recording: false }),

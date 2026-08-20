@@ -130,4 +130,23 @@ object MirrorSignaling {
         for (p in peers.values.sortedBy { it.createdAt }) arr.put(p.toJson())
         return arr
     }
+
+    /**
+     * Offers that arrived but have not yet been answered by the WebView. The WebView polls
+     * this after it (re)registers its listeners so an offer that landed during the gap —
+     * classically the very first one, before the JS listener attached — is still picked up
+     * instead of being silently lost (the "have to restart the cast" symptom).
+     */
+    fun pendingOffers(): JSONArray {
+        val arr = JSONArray()
+        for (p in peers.values.sortedBy { it.createdAt }) {
+            val sdp = p.offerSdp
+            if (sdp != null && p.answerSdp == null && !p.closed) {
+                arr.put(
+                    JSONObject().put("id", p.id).put("ip", p.ip).put("name", p.name).put("sdp", sdp),
+                )
+            }
+        }
+        return arr
+    }
 }
