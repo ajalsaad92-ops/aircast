@@ -68,23 +68,29 @@ object Net {
     }
 
     fun isConnected(context: Context): Boolean {
+        // What matters for casting is a usable LAN interface, not whether the *default*
+        // network has validated internet. On a phone that is itself the Wi-Fi hotspot the
+        // default network is cellular while the LAN (10.x) is up and serving the sender —
+        // so a non-loopback LAN IPv4 counts as connected.
+        if (localIpv4Addresses().isNotEmpty()) return true
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return false
-        val net = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(net) ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
 
     fun transportName(context: Context): String {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return "unknown"
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return "none") ?: return "none"
+        val caps = cm?.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+        val hasLan = localIpv4Addresses().isNotEmpty()
         return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
-            else -> "other"
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true -> "ethernet"
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"
+            // Default route is cellular but a LAN is up (e.g. the phone is the hotspot).
+            hasLan -> "lan"
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"
+            else -> "none"
         }
     }
 

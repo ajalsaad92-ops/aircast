@@ -247,7 +247,7 @@ class LiteMdnsResponder(private val context: Context) {
                         jumped = true
                         if (++hops > 20) break
                     }
-                    len and 0xC0 != 0 -> {
+                    len and 0xC0 == 0 -> {
                         val label = String(data, pos + 1, len)
                         labels.add(label)
                         pos += 1 + len

@@ -215,6 +215,20 @@ export function TroubleshootPage() {
       `Background    : ${settings?.backgroundMode ?? '—'} · keepPlaying: ${settings?.keepPlaying ? 'on' : 'off'}`,
       `Power         : keepScreenOn ${settings?.keepScreenOn ? 'on' : 'off'}`,
       '',
+      `--- Active now (what the app is doing / casting) ---`,
+      `Sessions      : ${(status?.sessions ?? []).length} connected`,
+      ...(status?.sessions ?? []).map((s) => `  · ${s.protocol} — ${s.name} (${s.ip})`),
+      `Mirror peers  : ${status?.activeMirrors ?? 0} active`,
+      ...(status?.mirrorPeers ?? []).map(
+        (p) => `  · ${p.name} (${p.ip})${p.connected ? ' · connected' : ''}`,
+      ),
+      `Playing       : ${
+        status?.playback && status.playback.state !== 'no_media' && status.playback.uri
+          ? `${status.playback.kind} "${status.playback.title || status.playback.uri}" — ${status.playback.state} from ${status.playback.senderName || status.playback.senderIp || '?'}`
+          : 'nothing'
+      }`,
+      `Recording     : ${status?.recording ? 'YES' : 'no'}`,
+      '',
       `--- Self-test results ---`,
       ...rows.map((r) => `[${r.pass === true ? 'PASS' : r.pass === false ? 'FAIL' : 'INFO'}] ${r.title} — ${r.detail}`),
       '',
