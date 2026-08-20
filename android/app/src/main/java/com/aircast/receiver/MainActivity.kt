@@ -1,10 +1,13 @@
 package com.aircast.receiver
 
 import android.os.Bundle
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.aircast.receiver.core.Prefs
 import com.aircast.receiver.service.ReceiverService
 import com.getcapacitor.BridgeActivity
+import java.io.File
 
 class MainActivity : BridgeActivity() {
     companion object {
@@ -14,6 +17,18 @@ class MainActivity : BridgeActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Record the real cause of any crash (incl. background-thread exceptions that
+        // method-level try/catch cannot catch) to logcat + a file.
+        installCrashLogger()
+
+        // If a previous run crashed, show the captured trace on-screen instead of
+        // re-running the code that crashed — so the cause is visible on the phone.
+        val crashFile = File(getExternalFilesDir(null), "aircast-crash.txt")
+        if (crashFile.exists()) {
+            showCrashReport(savedInstanceState, crashFile)
+            return
+        }
+
         // Core splash screen on Android 16 crashes with an IllegalStateException
         // unless `setKeepOnScreenCondition` is called, so keep it up briefly while
         // the bridge warms up and drop it afterwards.
@@ -120,6 +135,48 @@ class MainActivity : BridgeActivity() {
                 p.deviceName = provisionedName.trim()
                 com.aircast.receiver.core.Logger.i("main", "device name provisioned via intent (new): ${p.deviceName}")
             }
+        }
+    }
+
+    /** Renders the last captured crash trace full-screen so it can be screenshotted. */
+    private fun showCrashReport(savedInstanceState: Bundle?, crashFile: File) {
+        try {
+            super.onCreate(savedInstanceState)
+        } catch (t: Throwable) {
+            android.util.Log.e("AIRCAST_CRASH", "recovery bridge init failed: ${t.message}")
+        }
+        val trace = try { crashFile.readText() } catch (e: Throwable) { "read error: ${e.message}" }
+        val tv = TextView(this).apply {
+            text = "AirCast crash report — screenshot & send this:\n\n$trace"
+            setTextIsSelectable(true)
+            typeface = android.graphics.Typeface.MONOSPACE
+            textSize = 11f
+            setPadding(28, 56, 28, 28)
+            setTextColor(0xFFE8EEFC.toInt())
+        }
+        val sv = ScrollView(this).apply {
+            setBackgroundColor(0xFF0E1015.toInt())
+            addView(tv)
+        }
+        setContentView(sv)
+    }
+
+    /** Global handler: writes any uncaught exception's full stack trace before the app dies. */
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+            try {
+                val sw = java.io.StringWriter()
+                ex.printStackTrace(java.io.PrintWriter(sw))
+                val trace = sw.toString()
+                android.util.Log.e("AIRCAST_CRASH", "Uncaught on '${thread.name}':\n$trace")
+                try {
+                    getExternalFilesDir(null)?.let { dir ->
+                        File(dir, "aircast-crash.txt").writeText("thread=${thread.name}\n\n$trace")
+                    }
+                } catch (_: Throwable) { /* best effort */ }
+            } catch (_: Throwable) { /* never crash the crash handler */ }
+            previous?.uncaughtException(thread, ex)
         }
     }
 }
